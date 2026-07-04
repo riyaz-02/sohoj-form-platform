@@ -1,0 +1,599 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ============================================================
+   BRAND COLOR PALETTE — Extracted from Shohoj Form logo
+   Navy:  #1B2E6B  |  Teal: #2EC4A7
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  --background:         oklch(0.976 0.006 248);
+  --foreground:         oklch(0.15 0.055 255);
+  --card:               oklch(1 0 0);
+  --card-foreground:    oklch(0.15 0.055 255);
+  --popover:            oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.055 255);
+
+  /* Primary: Shohoj Navy #1B2E6B */
+  --primary:            oklch(0.28 0.10 258);
+  --primary-foreground: oklch(0.99 0 0);
+
+  /* Accent: Shohoj Teal #2EC4A7 */
+  --accent:             oklch(0.70 0.14 182);
+  --accent-foreground:  oklch(0.12 0.04 200);
+
+  --secondary:          oklch(0.94 0.018 252);
+  --secondary-foreground: oklch(0.28 0.10 258);
+  --muted:              oklch(0.94 0.008 248);
+  --muted-foreground:   oklch(0.52 0.035 252);
+  --destructive:        oklch(0.577 0.245 27.325);
+  --border:             oklch(0.89 0.014 248);
+  --input:              oklch(0.97 0.005 248);
+  --ring:               oklch(0.70 0.14 182);
+
+  --chart-1: oklch(0.28 0.10 258);
+  --chart-2: oklch(0.70 0.14 182);
+  --chart-3: oklch(0.55 0.12 170);
+  --chart-4: oklch(0.65 0.15 300);
+  --chart-5: oklch(0.60 0.14 25);
+
+  --radius: 0.75rem;
+
+  --sidebar: oklch(0.976 0.006 248);
+  --sidebar-foreground: oklch(0.15 0.055 255);
+  --sidebar-primary: oklch(0.28 0.10 258);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.70 0.14 182);
+  --sidebar-accent-foreground: oklch(0.12 0.04 200);
+  --sidebar-border: oklch(0.89 0.014 248);
+  --sidebar-ring: oklch(0.70 0.14 182);
+
+  /* Named brand tokens */
+  --brand-navy:       #1B2E6B;
+  --brand-navy-light: #2A3F8F;
+  --brand-navy-dark:  #111E4A;
+  --brand-teal:       #2EC4A7;
+  --brand-teal-light: #4BD4BC;
+  --brand-teal-dark:  #1FA88C;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', 'Hind Siliguri', 'Noto Sans Bengali', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ============================================
+   KEYFRAME ANIMATIONS
+   ============================================ */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0  oklch(0.70 0.14 182 / 0.5); }
+  70%  { box-shadow: 0 0 0 20px oklch(0.70 0.14 182 / 0); }
+  100% { box-shadow: 0 0 0 0  oklch(0.70 0.14 182 / 0); }
+}
+
+@keyframes pulse-ring-red {
+  0%   { box-shadow: 0 0 0 0  oklch(0.577 0.245 27.325 / 0.5); }
+  70%  { box-shadow: 0 0 0 20px oklch(0.577 0.245 27.325 / 0); }
+  100% { box-shadow: 0 0 0 0  oklch(0.577 0.245 27.325 / 0); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px)   rotate(0deg);  }
+  33%       { transform: translateY(-14px) rotate(2deg);  }
+  66%       { transform: translateY(-7px)  rotate(-1deg); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px)   rotate(0deg);  }
+  33%       { transform: translateY(-9px)  rotate(-2deg); }
+  66%       { transform: translateY(-16px) rotate(1deg);  }
+}
+
+@keyframes waveform-bounce {
+  0%, 100% { height: 8px; }
+  50%       { height: 28px; }
+}
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%            { transform: scale(1.0); opacity: 1; }
+}
+
+@keyframes check-draw {
+  from { stroke-dashoffset: 50; }
+  to   { stroke-dashoffset: 0; }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+  to   { width: var(--progress-width, 100%); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes border-dance {
+  0%   { border-color: oklch(0.28 0.10 258 / 0.4); }
+  50%  { border-color: oklch(0.70 0.14 182 / 0.6); }
+  100% { border-color: oklch(0.28 0.10 258 / 0.4); }
+}
+
+@keyframes hero-glow {
+  0%, 100% { opacity: 0.12; transform: scale(1); }
+  50%       { opacity: 0.20; transform: scale(1.08); }
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.70 0.14 182 / 0.4); }
+  50%       { box-shadow: 0 0 0 6px oklch(0.70 0.14 182 / 0); }
+}
+
+/* ============================================
+   ANIMATION UTILITY CLASSES
+   ============================================ */
+
+.animate-fade-in        { animation: fade-in 0.4s ease both; }
+.animate-fade-in-up     { animation: fade-in-up 0.5s ease both; }
+.animate-slide-in-right { animation: slide-in-right 0.4s ease both; }
+.animate-slide-in-left  { animation: slide-in-left 0.4s ease both; }
+.animate-scale-in       { animation: scale-in 0.3s ease both; }
+.animate-float          { animation: float 6s ease-in-out infinite; }
+.animate-float-delayed  { animation: float-delayed 8s ease-in-out infinite; }
+.animate-pulse-ring     { animation: pulse-ring 1.5s ease-out infinite; }
+.animate-pulse-ring-red { animation: pulse-ring-red 1.5s ease-out infinite; }
+.animate-spin-slow      { animation: spin-slow 3s linear infinite; }
+.animate-border-dance   { animation: border-dance 2s ease-in-out infinite; }
+.animate-hero-glow      { animation: hero-glow 4s ease-in-out infinite; }
+
+/* Staggered delays */
+.delay-75  { animation-delay:  75ms; }
+.delay-100 { animation-delay: 100ms; }
+.delay-150 { animation-delay: 150ms; }
+.delay-200 { animation-delay: 200ms; }
+.delay-300 { animation-delay: 300ms; }
+.delay-400 { animation-delay: 400ms; }
+.delay-500 { animation-delay: 500ms; }
+.delay-600 { animation-delay: 600ms; }
+.delay-700 { animation-delay: 700ms; }
+
+/* ============================================
+   GLASSMORPHISM
+   ============================================ */
+
+.glass {
+  background: oklch(1 0 0 / 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid oklch(1 0 0 / 0.35);
+}
+
+.glass-navy {
+  background: oklch(0.28 0.10 258 / 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid oklch(1 0 0 / 0.12);
+}
+
+.glass-teal {
+  background: oklch(0.70 0.14 182 / 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.70 0.14 182 / 0.25);
+}
+
+/* ============================================
+   GRADIENT TEXT — Brand palette
+   ============================================ */
+
+.gradient-text {
+  background: linear-gradient(135deg, #1B2E6B 0%, #2EC4A7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-teal {
+  background: linear-gradient(135deg, #2EC4A7 0%, #1fa88c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-reverse {
+  background: linear-gradient(135deg, #2EC4A7 0%, #1B2E6B 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #1B2E6B 0%, #2EC4A7 50%, #1B2E6B 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+}
+
+/* ============================================
+   CARD VARIANTS
+   ============================================ */
+
+.card-hover {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px oklch(0.28 0.10 258 / 0.13);
+  border-color: oklch(0.28 0.10 258 / 0.25);
+}
+
+.card-active {
+  border-color: oklch(0.70 0.14 182);
+  box-shadow: 0 0 0 3px oklch(0.70 0.14 182 / 0.18);
+}
+
+/* ============================================
+   BRAND GRADIENT BACKGROUNDS
+   ============================================ */
+
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #1B2E6B 0%, #2A3F8F 50%, #1B2E6B 100%);
+}
+
+.bg-brand-gradient-teal {
+  background: linear-gradient(135deg, #1B2E6B 0%, #1FA88C 100%);
+}
+
+.bg-teal-gradient {
+  background: linear-gradient(135deg, #2EC4A7 0%, #1FA88C 100%);
+}
+
+/* ============================================
+   NAVBAR
+   ============================================ */
+
+.navbar-brand {
+  background: linear-gradient(135deg, #1B2E6B 0%, #2A3F8F 100%);
+  box-shadow: 0 2px 24px oklch(0.28 0.10 258 / 0.15);
+}
+
+/* ============================================
+   STEP INDICATOR
+   ============================================ */
+
+.step-dot-active {
+  background: linear-gradient(135deg, #1B2E6B, #2EC4A7);
+  box-shadow: 0 0 0 3px oklch(0.70 0.14 182 / 0.25);
+}
+
+.step-dot-done {
+  background: #2EC4A7;
+}
+
+.step-dot-pending {
+  background: oklch(0.88 0.012 248);
+}
+
+/* ============================================
+   WAVEFORM BARS (voice recording)
+   ============================================ */
+
+.waveform-bar {
+  width: 4px;
+  border-radius: 2px;
+  background: oklch(0.28 0.10 258);
+}
+
+.waveform-bar:nth-child(1) { animation: waveform-bounce 0.8s ease-in-out infinite 0.0s; }
+.waveform-bar:nth-child(2) { animation: waveform-bounce 0.8s ease-in-out infinite 0.1s; }
+.waveform-bar:nth-child(3) { animation: waveform-bounce 0.8s ease-in-out infinite 0.2s; }
+.waveform-bar:nth-child(4) { animation: waveform-bounce 0.8s ease-in-out infinite 0.3s; }
+.waveform-bar:nth-child(5) { animation: waveform-bounce 0.8s ease-in-out infinite 0.4s; }
+.waveform-bar:nth-child(6) { animation: waveform-bounce 0.8s ease-in-out infinite 0.3s; }
+.waveform-bar:nth-child(7) { animation: waveform-bounce 0.8s ease-in-out infinite 0.2s; }
+.waveform-bar:nth-child(8) { animation: waveform-bounce 0.8s ease-in-out infinite 0.1s; }
+.waveform-bar:nth-child(9) { animation: waveform-bounce 0.8s ease-in-out infinite 0.0s; }
+
+/* ============================================
+   LOADING DOTS
+   ============================================ */
+
+.dot-loader span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.dot-loader span:nth-child(1) { animation: dot-bounce 1.2s ease-in-out infinite 0.0s; }
+.dot-loader span:nth-child(2) { animation: dot-bounce 1.2s ease-in-out infinite 0.2s; }
+.dot-loader span:nth-child(3) { animation: dot-bounce 1.2s ease-in-out infinite 0.4s; }
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: oklch(0.78 0.025 252); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: oklch(0.60 0.06 252); }
+
+/* ============================================
+   HIGHLIGHTED FIELD (TTS reading)
+   ============================================ */
+
+.field-speaking {
+  border-color: oklch(0.70 0.14 182) !important;
+  box-shadow: 0 0 0 3px oklch(0.70 0.14 182 / 0.25), 0 4px 16px oklch(0.70 0.14 182 / 0.15) !important;
+  background: oklch(0.96 0.04 182) !important;
+  transition: all 0.3s ease;
+}
+
+/* ============================================
+   STEP PROGRESS BAR
+   ============================================ */
+
+.step-progress-bar {
+  height: 3px;
+  background: linear-gradient(90deg, #1B2E6B, #2EC4A7);
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   BOUNDING BOX OVERLAY
+   ============================================ */
+
+.bbox-overlay {
+  position: absolute;
+  border: 2.5px solid oklch(0.70 0.14 182);
+  border-radius: 4px;
+  background: oklch(0.70 0.14 182 / 0.10);
+  box-shadow: 0 0 0 4000px oklch(0 0 0 / 0.45);
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   MOBILE TOUCH IMPROVEMENTS
+   ============================================ */
+
+button, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+input, textarea {
+  font-size: 16px;
+}
+
+/* ============================================
+   VOICE GUIDE BAR
+   ============================================ */
+
+@keyframes waveform {
+  0%, 100% { height: 3px;  opacity: 0.4; }
+  50%       { height: 14px; opacity: 1;   }
+}
+
+/* ============================================
+   MICRO ANIMATIONS
+   ============================================ */
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+.animate-fade-in  { animation: fade-in  0.35s ease both; }
+.animate-scale-in { animation: scale-in 0.25s ease both; }
+
+/* ============================================
+   VOICE GUIDE BAR — slide-up entrance
+   ============================================ */
+
+@keyframes slide-up-left {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+.voice-guide-enter {
+  animation: slide-up-left 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Depleting progress bar */
+@keyframes deplete-bar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ============================================
+   HERO SECTION — decorative blob animations
+   ============================================ */
+
+.hero-blob {
+  border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
+  animation: blob-morph 8s ease-in-out infinite;
+  filter: blur(2px);
+}
+
+@keyframes blob-morph {
+  0%, 100% { border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; }
+  25%       { border-radius: 40% 60% 30% 70% / 60% 40% 50% 40%; }
+  50%       { border-radius: 70% 30% 50% 50% / 40% 50% 60% 60%; }
+  75%       { border-radius: 30% 70% 60% 40% / 50% 40% 50% 60%; }
+}
+
+/* ============================================
+   PREMIUM CARD GLOW EFFECT
+   ============================================ */
+
+.card-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-glow::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, oklch(0.70 0.14 182 / 0.06) 0%, transparent 60%);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.card-glow:hover::before {
+  opacity: 1;
+}
+
+/* ============================================
+   FEATURE BADGE PILL
+   ============================================ */
+
+.feature-badge {
+  background: linear-gradient(135deg, oklch(0.28 0.10 258 / 0.06), oklch(0.70 0.14 182 / 0.06));
+  border: 1px solid oklch(0.28 0.10 258 / 0.12);
+  animation: badge-pulse 2.5s ease-in-out infinite;
+}
+
+/* ============================================
+   CTA BUTTON SHINE
+   ============================================ */
+
+.btn-primary {
+  background: linear-gradient(135deg, #1B2E6B 0%, #2A3F8F 100%);
+  box-shadow: 0 4px 20px oklch(0.28 0.10 258 / 0.35);
+  transition: all 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -75%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.18), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.5s ease;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 28px oklch(0.28 0.10 258 / 0.45);
+  transform: translateY(-1px);
+}
+
+.btn-primary:hover::after {
+  left: 125%;
+}
+
+.btn-teal {
+  background: linear-gradient(135deg, #2EC4A7 0%, #1FA88C 100%);
+  box-shadow: 0 4px 16px oklch(0.70 0.14 182 / 0.35);
+  transition: all 0.22s ease;
+}
+
+.btn-teal:hover {
+  box-shadow: 0 8px 24px oklch(0.70 0.14 182 / 0.45);
+  transform: translateY(-1px);
+}

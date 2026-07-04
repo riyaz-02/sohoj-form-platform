@@ -1,0 +1,24 @@
+# Sohoj Form — Gemma 4 Server Requirements
+# Install: pip install -r requirements.txt
+
+# Core
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
+# Gemma 4 inference
+torch>=2.3.0
+transformers>=4.51.0
+accelerate>=0.30.0
+sentencepiece>=0.2.0
+protobuf>=4.25.0
+
+# Image processing
+Pillow>=10.3.0
+
+# Kaggle Hub (downloads model from Kaggle)
+kagglehub>=0.3.0
+
+# Utilities
+pydantic>=2.7.0
+python-dotenv>=1.0.0
