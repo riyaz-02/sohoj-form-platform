@@ -99,17 +99,14 @@ export function Step1Upload() {
   }
 
   if (isAnalyzing) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <LoadingSpinner message="Analyzing form images..." bengaliMessage="ফর্ম ছবি বিশ্লেষণ করছি..." />
-      </div>
-    )
+    return <AnalyzingScreen />
   }
 
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
       {/* Page header */}
-      <div className="mb-8 animate-fade-in">
+      <div className="mb-5 animate-fade-in">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'oklch(0.28 0.085 258)' }}>1</div>
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 · ধাপ ১</span>
@@ -251,6 +248,123 @@ export function Step1Upload() {
         onMute={guide.setMuted}
         onDismiss={guide.silence}
       />
+    </div>
+  )
+}
+
+// ── Animated analyzing screen ─────────────────────────────────────────────────
+
+const STAGES = [
+  { label: 'S', en: 'Scanning image', bn: 'ছবি স্ক্যান করছি', duration: 15 },
+  { label: 'AI', en: 'Gemma AI reading form', bn: 'Gemma AI ফর্ম পড়ছে', duration: 50 },
+  { label: 'F', en: 'Detecting all fields', bn: 'সব ঘর চিহ্নিত করছি', duration: 20 },
+  { label: 'B', en: 'Translating to Bengali', bn: 'বাংলায় অনুবাদ করছি', duration: 15 },
+]
+
+const TIPS = [
+  { en: 'Gemma 3 4B runs entirely on your device — your data never leaves.', bn: 'Gemma AI আপনার ডিভাইসেই চলছে — আপনার তথ্য কোথাও যাচ্ছে না।' },
+  { en: 'Make sure the form image is well-lit for better accuracy.', bn: 'ভালো আলোয় তোলা ছবি থেকে আরও নির্ভুল তথ্য পাওয়া যায়।' },
+  { en: 'AI will detect fields and translate them to Bengali automatically.', bn: 'AI ইংরেজি ঘর বাংলায় অনুবাদ করে দেবে।' },
+  { en: 'Next, you\'ll upload Aadhaar or PAN to auto-fill many fields.', bn: 'পরে আধার বা PAN দিয়ে অনেক ঘর এক ক্লিকে পূরণ হবে।' },
+  { en: 'Sohoj Form supports Krishak Bandhu, Ayushman Bharat, and more.', bn: 'কৃষক বন্ধু, আয়ুষ্মান ভারত সহ বহু ফর্ম সহজ করা যায়।' },
+]
+
+function AnalyzingScreen() {
+  const [stageIdx, setStageIdx] = useState(0)
+  const [tipIdx, setTipIdx] = useState(0)
+  const [progress, setProgress] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    // Elapsed seconds counter
+    const tick = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(tick)
+  }, [])
+
+  useEffect(() => {
+    // Smooth progress animation (target ~90% over 90 seconds, never reaches 100)
+    const interval = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 90) return p + 0.02
+        return Math.min(p + (90 - p) * 0.025, 98)
+      })
+    }, 500)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    // Advance stages based on progress
+    const idx = progress < 15 ? 0 : progress < 65 ? 1 : progress < 85 ? 2 : 3
+    setStageIdx(idx)
+  }, [progress])
+
+  useEffect(() => {
+    // Rotate tips every 6 seconds
+    const t = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 6000)
+    return () => clearInterval(t)
+  }, [])
+
+  const mins = Math.floor(elapsed / 60)
+  const secs = elapsed % 60
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8 max-w-lg mx-auto">
+      {/* Central animated indicator */}
+      <div className="relative mb-5">
+        <div className="w-20 h-20 rounded-full flex items-center justify-center"
+          style={{ background: 'oklch(0.28 0.085 258 / 0.08)', border: '2px solid oklch(0.28 0.085 258 / 0.15)' }}>
+          <span className="text-sm font-bold text-gray-600 animate-pulse">{STAGES[stageIdx].label}</span>
+        </div>
+        {/* Spinning ring */}
+        <svg className="absolute inset-0 w-20 h-20 -rotate-90 animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 80 80">
+          <circle cx="40" cy="40" r="37" fill="none" stroke="oklch(0.28 0.085 258 / 0.1)" strokeWidth="3" />
+          <circle cx="40" cy="40" r="37" fill="none" stroke="oklch(0.28 0.085 258)" strokeWidth="3"
+            strokeDasharray="232" strokeDashoffset="184" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      {/* Stage label */}
+      <h2 className="text-xl font-bold text-gray-900 text-center mb-1">{STAGES[stageIdx].en}</h2>
+      <p className="text-base text-gray-500 text-center mb-6">{STAGES[stageIdx].bn}</p>
+
+      {/* Progress bar */}
+      <div className="w-full bg-gray-100 rounded-full h-2 mb-2 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, oklch(0.28 0.085 258), oklch(0.55 0.15 230))' }}
+        />
+      </div>
+      <div className="flex justify-between w-full text-xs text-gray-400 mb-8">
+        <span>{Math.round(progress)}% complete</span>
+        <span>{timeStr} elapsed</span>
+      </div>
+
+      {/* Stage dots */}
+      <div className="flex items-center gap-3 mb-6">
+        {STAGES.map((s, i) => (
+          <div key={i} className="flex flex-col items-center gap-1">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
+              i < stageIdx ? 'bg-green-100 text-green-600' :
+              i === stageIdx ? 'text-white shadow-md scale-110' : 'bg-gray-100 text-gray-400'
+            }`} style={i === stageIdx ? { background: 'oklch(0.28 0.085 258)' } : {}}>
+              {i < stageIdx ? '✓' : s.label}
+            </div>
+            <span className={`text-[9px] font-medium ${i === stageIdx ? 'text-gray-700' : 'text-gray-400'}`}>{s.bn}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Rotating tip */}
+      <div className="w-full rounded-xl border border-blue-100 bg-blue-50 p-4">
+        <p className="text-[11px] font-semibold text-blue-500 uppercase tracking-wide mb-1">Did you know?</p>
+        <p className="text-sm font-medium text-gray-700 leading-relaxed">{TIPS[tipIdx].en}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{TIPS[tipIdx].bn}</p>
+      </div>
+
+      <p className="text-xs text-gray-400 mt-4 text-center">
+        Running Gemma 3 4B locally · CPU inference takes 1–2 minutes
+      </p>
     </div>
   )
 }

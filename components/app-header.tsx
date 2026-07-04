@@ -3,52 +3,36 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-/**
- * AppHeader — Sticky top navbar shown on all form-fill steps (/form)
- * Uses the Shohoj Form logo with brand navy background
- */
 export function AppHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10">
-      {/* Navy gradient bar */}
-      <div
-        className="relative flex items-center justify-between px-4 sm:px-6 py-3"
-        style={{
-          background: 'linear-gradient(135deg, #111E4A 0%, #1B2E6B 60%, #2A3F8F 100%)',
-        }}
-      >
-        {/* Logo + brand name */}
+    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white shadow-sm">
+      <div className="relative flex items-center justify-between px-4 sm:px-6 py-3">
+        {/* Logo + brand */}
         <Link href="/" className="flex items-center gap-3 group">
           <div className="relative w-9 h-9 shrink-0">
             <Image
               src="/logo.png"
-              alt="Shohoj Form"
+              alt="Sohoj Form"
               fill
-              className="object-contain drop-shadow-md group-hover:scale-105 transition-transform duration-200"
+              className="object-contain group-hover:scale-105 transition-transform duration-200"
               priority
             />
           </div>
           <div className="leading-none">
-            <div className="font-bold text-white text-[15px] tracking-tight">Shohoj Form</div>
-            <div className="text-[10px] text-white/60 font-medium">ফর্ম ভরার কাজ, এখন হবে Sohoj</div>
+            <div className="font-bold text-gray-900 text-[15px] tracking-tight">Sohoj Form</div>
+            <div className="text-[10px] text-gray-400 font-medium">সহজ ফর্ম · AI Form Assistant</div>
           </div>
         </Link>
 
-        {/* Right — step indicator pill */}
-        <div
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-white/80"
-          style={{ background: 'oklch(1 0 0 / 0.08)', border: '1px solid oklch(1 0 0 / 0.12)' }}
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-[#2EC4A7] animate-pulse" />
-          AI-Powered Form Assistant
+        {/* Right badge */}
+        <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold text-gray-600 bg-gray-100 border border-gray-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          Gemma 3 · Local AI
         </div>
       </div>
 
-      {/* Teal accent line at bottom */}
-      <div
-        className="h-[2px] w-full"
-        style={{ background: 'linear-gradient(90deg, #2EC4A7, #1FA88C 50%, transparent)' }}
-      />
+      {/* Brand accent line */}
+      <div className="h-[2px] w-full" style={{ background: 'linear-gradient(90deg, oklch(0.28 0.085 258), oklch(0.55 0.15 230) 50%, transparent)' }} />
     </header>
   )
 }

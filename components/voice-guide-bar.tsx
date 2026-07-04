@@ -69,21 +69,21 @@ export function stopSpeaking() {
 
 // ── Browser TTS fallback ──────────────────────────────────────────────────
 
-async function browserSpeak(bn: string, en?: string): Promise<void> {
+async function browserSpeak(bn: string): Promise<void> {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
 
   const voices = await getVoices()
-  const { voice, lang, text } = pickVoiceAndText(voices, bn, en)
+  const { voice, lang, text } = pickVoiceAndText(voices, bn)
 
   return new Promise<void>((resolve) => {
     const u = new SpeechSynthesisUtterance(text)
     u.lang = lang
-    u.rate = lang.startsWith('bn') ? 0.82 : 0.9
-    u.pitch = 1.05
+    u.rate = 0.85
+    u.pitch = 1.0
     u.volume = 1.0
     if (voice) u.voice = voice
     u.onend = () => resolve()
-    u.onerror = () => resolve() // resolve even on error — don't block UI
+    u.onerror = () => resolve()
     window.speechSynthesis.speak(u)
   })
 }
@@ -102,27 +102,20 @@ function getVoices(): Promise<SpeechSynthesisVoice[]> {
 function pickVoiceAndText(
   voices: SpeechSynthesisVoice[],
   bn: string,
-  en?: string,
 ): { voice: SpeechSynthesisVoice | null; lang: string; text: string } {
-  const hasBn = voices.some((v) => v.lang.startsWith('bn') || v.name.toLowerCase().includes('bengali'))
-  const hasHi = voices.some((v) => v.lang.startsWith('hi'))
-
-  if (hasBn) {
-    const voice = voices.find((v) => v.lang === 'bn-IN') ||
+  // Always speak Bengali text — never fall back to English
+  const bnVoice = voices.find((v) => v.lang === 'bn-IN') ||
+                  voices.find((v) => v.lang === 'bn-BD') ||
                   voices.find((v) => v.lang.startsWith('bn')) ||
+                  voices.find((v) => v.name.toLowerCase().includes('bengali')) ||
                   null
-    return { voice, lang: 'bn-IN', text: bn }
-  }
-  if (hasHi) {
-    const voice = voices.find((v) => v.lang === 'hi-IN') || null
-    // Speak English text with Hindi voice (sounds better than English-only)
-    return { voice, lang: 'hi-IN', text: en || bn }
-  }
-  // English always works
-  const voice = voices.find((v) => v.lang === 'en-IN') ||
-                voices.find((v) => v.lang.startsWith('en')) ||
-                null
-  return { voice, lang: 'en-US', text: en || bn }
+
+  if (bnVoice) return { voice: bnVoice, lang: bnVoice.lang, text: bn }
+
+  // No Bengali voice — still speak Bengali text with any available voice
+  // (will sound like transliterated speech but is better than English)
+  const anyVoice = voices[0] || null
+  return { voice: anyVoice, lang: 'bn-IN', text: bn }
 }
 
 // ── Prefetch common lines on idle ─────────────────────────────────────────

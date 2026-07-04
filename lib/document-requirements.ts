@@ -24,7 +24,7 @@ export const DOCUMENT_CATALOG: Record<DocumentType, {
   aadhaar: {
     bengaliName: 'আধার কার্ড',
     englishName: 'Aadhaar Card',
-    icon: '🪪',
+    icon: 'ID',
     description: 'নাম, জন্ম তারিখ, ঠিকানা, আধার নম্বর',
     descriptionEn: 'Name, Date of Birth, Address, Aadhaar Number',
     provides: ['name', 'full_name', 'applicant_name', 'dob', 'date_of_birth', 'address', 'aadhaar', 'aadhar', 'uid', 'gender', 'mobile', 'phone'],
@@ -39,7 +39,7 @@ export const DOCUMENT_CATALOG: Record<DocumentType, {
   pan: {
     bengaliName: 'প্যান কার্ড',
     englishName: 'PAN Card',
-    icon: '💳',
+    icon: 'PAN',
     description: 'প্যান নম্বর, নাম, পিতার নাম',
     descriptionEn: 'PAN Number, Name, Father\'s Name',
     provides: ['pan', 'pan_number', 'permanent_account', 'income_tax', 'tax_id'],
@@ -51,7 +51,7 @@ export const DOCUMENT_CATALOG: Record<DocumentType, {
   'voter-id': {
     bengaliName: 'ভোটার আইডি কার্ড',
     englishName: 'Voter ID Card',
-    icon: '🗳️',
+    icon: 'VID',
     description: 'ভোটার আইডি নম্বর (EPIC), পিতার নাম, ঠিকানা',
     descriptionEn: 'Voter ID Number (EPIC), Father\'s Name, Address',
     provides: ['epic', 'voter_id', 'voter_number', 'electoral', 'election_card'],
@@ -63,7 +63,7 @@ export const DOCUMENT_CATALOG: Record<DocumentType, {
   'land-certificate': {
     bengaliName: 'জমির দলিল / পর্চা',
     englishName: 'Land Certificate / Patta',
-    icon: '📜',
+    icon: 'LC',
     description: 'জমির পরিমাণ, খাসরা নম্বর, দাগ নম্বর, মৌজা',
     descriptionEn: 'Land Area, Khasra Number, Plot/Dag Number, Mouza',
     provides: ['land', 'land_area', 'khasra', 'dag', 'plot', 'mouza', 'village', 'survey', 'patta', 'khata', 'bigha'],
@@ -77,7 +77,7 @@ export const DOCUMENT_CATALOG: Record<DocumentType, {
   'bank-passbook': {
     bengaliName: 'ব্যাংক পাসবুক',
     englishName: 'Bank Passbook / Statement',
-    icon: '🏦',
+    icon: 'BP',
     description: 'অ্যাকাউন্ট নম্বর, IFSC কোড, ব্যাংকের নাম',
     descriptionEn: 'Account Number, IFSC Code, Bank Name',
     provides: ['bank', 'account', 'bank_account', 'account_number', 'ifsc', 'bank_name', 'branch', 'micr'],

@@ -99,48 +99,15 @@ Bengali field names:
 }
 
 function buildPrompt(expectedType: string): string {
-  const specificExtraction = DOC_PROMPTS[expectedType] || 'Extract all visible fields with their values.'
-  return `You are an expert at reading Indian identity and financial documents.
+  const fields = DOC_PROMPTS[expectedType] || 'Extract all visible text fields.'
+  return `Read this Indian government document image. Expected type: "${expectedType}".
 
-EXPECTED DOCUMENT TYPE: "${expectedType}"
+${fields}
 
-STEP 1 — IDENTIFY:
-What type of document is this image?
-Valid types: aadhaar, pan, voter-id, land-certificate, bank-passbook, unknown
+Return ONLY this JSON:
+{"detectedType":"${expectedType}","isCorrect":true,"confidence":0.9,"rejectionReason":null,"extractedData":[{"id":"field_id","fieldName":"English name","bengaliName":"Bengali name","value":"extracted value","confidence":0.9,"category":"personal","needsReview":false}]}
 
-STEP 2 — VALIDATE:
-Does it match the expected type "${expectedType}"?
-If NO, explain why it doesn't match (what type it actually is).
-
-STEP 3 — EXTRACT:
-${specificExtraction}
-
-OUTPUT — Return ONLY this JSON (no markdown, no explanation):
-{
-  "detectedType": "aadhaar|pan|voter-id|land-certificate|bank-passbook|unknown",
-  "isCorrect": true|false,
-  "confidence": 0.0-1.0,
-  "rejectionReason": "null or explanation if wrong doc",
-  "extractedData": [
-    {
-      "id": "unique_snake_case_id",
-      "fieldName": "English field name",
-      "bengaliName": "Bengali field name",
-      "value": "extracted value (empty string if not visible)",
-      "confidence": 0.0-1.0,
-      "category": "personal|land|financial|other",
-      "needsReview": false
-    }
-  ]
-}
-
-RULES:
-- confidence: 1.0 = perfectly clear, 0.7 = somewhat clear, 0.5 = partially visible
-- needsReview = true if value is blurry, partially cut, or you're less than 80% confident
-- NEVER make up or guess values — use empty string if not visible
-- For bank passbook: include full account number (no masking)
-- For Aadhaar: if number is partially masked, include what's visible
-- Return ONLY JSON, nothing else`
+Rules: detectedType must be one of: aadhaar, pan, voter-id, land-certificate, bank-passbook, unknown. Set isCorrect=false if document type does not match "${expectedType}". Never guess values — use "" if not visible. Return ONLY JSON.`
 }
 
 type ExtractedField = {

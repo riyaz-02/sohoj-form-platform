@@ -4,7 +4,7 @@ import { useFormContext, type DocumentData } from '@/lib/form-context'
 import { DOCUMENT_CATALOG, type DocumentType } from '@/lib/document-requirements'
 import { ExtractedFieldCard } from './extracted-field-card'
 import { StepNavigator } from './step-navigator'
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { LoadingSpinner } from './loading-spinner'
 import {
   AlertCircle, CheckCircle2, FileText, Sparkles,
@@ -132,7 +132,7 @@ export function Step2Documents() {
   const hasDemo = isDemoMode || documents.some((d) => d.extractedData.some((f) => f.id?.startsWith('demo_')))
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
       {/* Header */}
       <div className="mb-8 animate-fade-in">
         <div className="flex items-center gap-2 mb-2">
@@ -273,7 +273,7 @@ interface DocumentSlotProps {
 }
 
 function DocumentSlot({ doc, catalog, fillsFields, isLoading, onUpload }: DocumentSlotProps) {
-  const fileRef = useState<HTMLInputElement | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -283,7 +283,7 @@ function DocumentSlot({ doc, catalog, fillsFields, isLoading, onUpload }: Docume
       onUpload(doc.documentType, ev.target?.result as string)
     }
     reader.readAsDataURL(file)
-    e.target.value = '' // allow re-upload
+    e.target.value = ''
   }
 
   return (
@@ -294,17 +294,16 @@ function DocumentSlot({ doc, catalog, fillsFields, isLoading, onUpload }: Docume
         ? 'border-red-200 bg-red-50/20'
         : 'border-border bg-white hover:border-border/80'
     }`}>
-      <label className="flex items-center gap-3 p-4 cursor-pointer">
-        {/* Doc icon */}
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl shrink-0 ${
-          doc.uploaded ? 'bg-green-100' : 'bg-muted'
+      <div className="flex items-center gap-3 p-4">
+        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-[10px] font-bold shrink-0 ${
+          doc.uploaded ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
         }`}>
           {isLoading ? (
-            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
           ) : doc.uploaded ? (
-            <CheckCircle2 className="w-6 h-6 text-green-600" />
+            <CheckCircle2 className="w-5 h-5 text-green-600" />
           ) : (
-            catalog?.icon || '📄'
+            catalog?.icon || 'DOC'
           )}
         </div>
 
@@ -318,60 +317,55 @@ function DocumentSlot({ doc, catalog, fillsFields, isLoading, onUpload }: Docume
             )}
           </div>
 
-          {/* What this doc fills */}
           {fillsFields.length > 0 && !doc.uploaded && !doc.error && (
             <p className="text-xs text-muted-foreground mt-0.5">
               পূরণ করবে: {fillsFields.slice(0, 3).join(', ')}{fillsFields.length > 3 ? '…' : ''}
             </p>
           )}
-
-          {/* Extracted count */}
           {doc.uploaded && doc.extractedData.length > 0 && (
-            <p className="text-xs text-green-600 mt-0.5">
-              {doc.extractedData.length}টি তথ্য বের হয়েছে
-            </p>
+            <p className="text-xs text-green-600 mt-0.5">{doc.extractedData.length}টি তথ্য বের হয়েছে</p>
           )}
-
-          {/* Error */}
           {doc.error && !isLoading && (
             <p className="text-xs text-red-600 mt-0.5 leading-snug">{doc.error}</p>
           )}
-
-          {/* Loading */}
           {isLoading && (
-            <p className="text-xs text-primary mt-0.5">AI পড়ছে…</p>
+            <p className="text-xs text-primary mt-0.5">AI পড়ছে… (১-২ মিনিট লাগতে পারে)</p>
           )}
         </div>
 
-        {/* Upload / Re-upload button */}
-        <div className="shrink-0" onClick={(e) => e.preventDefault()}>
-          <label className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+        {/* Upload button — NOT inside a label */}
+        <button
+          type="button"
+          disabled={isLoading}
+          onClick={() => inputRef.current?.click()}
+          className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
             doc.uploaded
               ? 'bg-muted text-muted-foreground hover:bg-muted/80'
               : 'text-white'
           }`}
-            style={!doc.uploaded ? { background: 'oklch(0.28 0.085 258)' } : {}}
-          >
-            {isLoading ? (
-              <span>পড়ছি…</span>
-            ) : doc.uploaded ? (
-              <><RefreshCw className="w-3 h-3" /> পুনরায়</>
-            ) : (
-              <><Upload className="w-3 h-3" /> আপলোড</>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              disabled={isLoading}
-              onChange={handleFile}
-            />
-          </label>
-        </div>
-      </label>
+          style={!doc.uploaded ? { background: 'oklch(0.28 0.085 258)' } : {}}
+        >
+          {isLoading ? (
+            <span>পড়ছি…</span>
+          ) : doc.uploaded ? (
+            <><RefreshCw className="w-3 h-3" /> পুনরায়</>
+          ) : (
+            <><Upload className="w-3 h-3" /> আপলোড</>
+          )}
+        </button>
 
-      {/* Bengali description of what the doc provides */}
+        {/* Hidden file input */}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          className="hidden"
+          disabled={isLoading}
+          onChange={handleFile}
+        />
+      </div>
+
+      {/* Bengali description */}
       {!doc.uploaded && !doc.error && catalog?.description && (
         <div className="px-4 pb-3">
           <p className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
@@ -383,3 +377,5 @@ function DocumentSlot({ doc, catalog, fillsFields, isLoading, onUpload }: Docume
     </div>
   )
 }
+
+

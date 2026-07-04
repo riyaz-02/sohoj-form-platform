@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// TODO: replace with real Gemma 4 API call
-// POST /api/generate-output
-// Accepts the final filled field map and original form images
-// Returns: a mock PDF URL and bounding box data for the hand-fill walkthrough
+/**
+ * POST /api/generate-output
+ * Generates a step-by-step walkthrough from the REAL extracted field data.
+ * Bbox positions are distributed evenly across the form height.
+ */
 
 interface GenerateOutputRequest {
   finalFieldMap: Record<string, { value: string; fieldName: string; bengaliName: string; source: string }>
@@ -17,86 +18,93 @@ interface BoundingBox {
   value: string
   captionEn: string
   captionBn: string
-  bbox: { x: number; y: number; width: number; height: number; pagePercent: boolean } // percentages of image dimensions
+  bbox: { x: number; y: number; width: number; height: number; pagePercent: boolean }
 }
 
-// Mock bounding boxes for Krishak Bandhu form (reference layout)
-const MOCK_BBOXES: BoundingBox[] = [
-  {
-    fieldId: 'a2',
-    fieldName: 'Full Name',
-    bengaliName: 'সম্পূর্ণ নাম',
-    value: 'Rajesh Kumar',
-    captionEn: 'Write your full name here: Rajesh Kumar',
-    captionBn: 'এখানে আপনার সম্পূর্ণ নাম লিখুন: রাজেশ কুমার',
-    bbox: { x: 12, y: 18, width: 60, height: 6, pagePercent: true },
-  },
-  {
-    fieldId: 'a3',
-    fieldName: 'Date of Birth',
-    bengaliName: 'জন্ম তারিখ',
-    value: '15/05/1985',
-    captionEn: 'Write your date of birth: 15/05/1985',
-    captionBn: 'আপনার জন্ম তারিখ লিখুন: ১৫/০৫/১৯৮৫',
-    bbox: { x: 12, y: 28, width: 35, height: 6, pagePercent: true },
-  },
-  {
-    fieldId: 'a1',
-    fieldName: 'Aadhaar Number',
-    bengaliName: 'আধার নম্বর',
-    value: '1234 5678 9012',
-    captionEn: 'Write your Aadhaar number: 1234 5678 9012',
-    captionBn: 'আপনার আধার নম্বর লিখুন: ১২৩৪ ৫৬৭৮ ৯০১২',
-    bbox: { x: 12, y: 38, width: 45, height: 6, pagePercent: true },
-  },
-  {
-    fieldId: 'l1',
-    fieldName: 'Land Area (Hectares)',
-    bengaliName: 'জমির আয়তন (হেক্টর)',
-    value: '2.5',
-    captionEn: 'Write your land area in hectares: 2.5',
-    captionBn: 'হেক্টরে আপনার জমির পরিমাণ লিখুন: ২.৫',
-    bbox: { x: 12, y: 50, width: 25, height: 6, pagePercent: true },
-  },
-  {
-    fieldId: 'b1',
-    fieldName: 'Account Number',
-    bengaliName: 'অ্যাকাউন্ট নম্বর',
-    value: '****5678',
-    captionEn: 'Write your bank account number (last 4 digits visible)',
-    captionBn: 'আপনার ব্যাংক অ্যাকাউন্ট নম্বর লিখুন (শেষ ৪ সংখ্যা দৃশ্যমান)',
-    bbox: { x: 12, y: 62, width: 50, height: 6, pagePercent: true },
-  },
-]
+// Approximate x positions for typical government form fields
+const FIELD_X_DEFAULTS: Record<string, number> = {
+  name: 10, full_name: 10, applicant_name: 10,
+  date_of_birth: 10, dob: 10,
+  gender: 50, sex: 50,
+  aadhaar: 10, aadhaar_number: 10, pan: 10, pan_number: 10,
+  account_number: 10, bank_account: 10,
+  ifsc: 50, ifsc_code: 50,
+  address: 10, village: 10, district: 10, state: 50, pin: 70,
+  mobile: 10, phone: 10,
+  income: 10, annual_income: 10,
+  father: 10, father_name: 10,
+  land_area: 10, khasra: 10,
+}
+
+function getFieldX(fieldId: string): number {
+  const lower = fieldId.toLowerCase()
+  for (const [key, x] of Object.entries(FIELD_X_DEFAULTS)) {
+    if (lower.includes(key)) return x
+  }
+  return 10 // default left-aligned
+}
+
+function getBengaliWriteCaption(bengaliName: string, value: string): string {
+  return `${bengaliName} লিখুন: ${value}`
+}
+
+function getEnglishWriteCaption(fieldName: string, value: string): string {
+  return `Write your ${fieldName}: ${value}`
+}
 
 export async function POST(request: NextRequest) {
   try {
     const body: GenerateOutputRequest = await request.json()
+    const fieldMap = body.finalFieldMap || {}
 
-    // Simulate generation delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    // Get entries with real values only
+    const realEntries = Object.entries(fieldMap)
+      .filter(([, f]) => f.value && f.value.trim() !== '' && f.value !== 'N/A')
+      .map(([id, f]) => ({ id, ...f }))
 
-    // Merge provided field values into the mock bounding boxes
-    const walkthrough = MOCK_BBOXES.map((box) => {
-      const fieldData = body.finalFieldMap?.[box.fieldId]
+    if (realEntries.length === 0) {
+      return NextResponse.json({
+        success: true,
+        walkthrough: [],
+        generatedAt: new Date().toISOString(),
+      })
+    }
+
+    // Spread fields evenly across the form height (10% top padding, 10% bottom padding)
+    const topPad = 10
+    const bottomPad = 15
+    const usableHeight = 100 - topPad - bottomPad
+    const step = realEntries.length > 1 ? usableHeight / (realEntries.length - 1) : 0
+
+    const walkthrough: BoundingBox[] = realEntries.map((f, i) => {
+      const yPos = realEntries.length === 1
+        ? topPad + usableHeight / 2
+        : topPad + i * step
+
+      // Width depends on value length: short values (IDs) ~40%, long values (addresses) ~75%
+      const width = f.value.length > 20 ? 75 : f.value.length > 10 ? 50 : 40
+
       return {
-        ...box,
-        value: fieldData?.value || box.value,
-        captionEn: fieldData?.value
-          ? `${box.captionEn.split(':')[0]}: ${fieldData.value}`
-          : box.captionEn,
-        captionBn: fieldData?.value
-          ? `${box.captionBn.split(':')[0]}: ${fieldData.value}`
-          : box.captionBn,
+        fieldId: f.id,
+        fieldName: f.fieldName,
+        bengaliName: f.bengaliName,
+        value: f.value,
+        captionEn: getEnglishWriteCaption(f.fieldName, f.value),
+        captionBn: getBengaliWriteCaption(f.bengaliName, f.value),
+        bbox: {
+          x: getFieldX(f.id),
+          y: Math.max(5, Math.min(90, yPos - 2)),
+          width,
+          height: 5,
+          pagePercent: true,
+        },
       }
     })
 
     return NextResponse.json({
       success: true,
-      // TODO: Gemma 4 would return a real PDF with filled form fields
-      pdfUrl: '/api/generate-output/mock-pdf', // placeholder
-      pdfName: `sohoj-form-${body.formId || 'filled'}-${Date.now()}.pdf`,
       walkthrough,
+      pdfName: `sohoj-form-${body.formId || 'filled'}-${Date.now()}.txt`,
       generatedAt: new Date().toISOString(),
     })
   } catch (error) {

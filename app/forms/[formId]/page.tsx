@@ -3,9 +3,9 @@
 import { FormStepper } from '@/components/form-stepper'
 import { Step1Upload } from '@/components/step-1-upload'
 import { Step2Documents } from '@/components/step-2-documents'
-import { Step3Voice } from '@/components/step-3-voice'
 import { Step4Review } from '@/components/step-4-review'
 import { Step5Done } from '@/components/step-5-done'
+import { FloatingVoicePanel } from '@/components/floating-voice-panel'
 import { useFormContext } from '@/lib/form-context'
 import { useLanguage } from '@/lib/language-context'
 import { useRouter, useParams } from 'next/navigation'
@@ -13,13 +13,13 @@ import { ArrowLeft, Globe, ChevronDown } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 
-const FORM_INFO: Record<string, { en: string; bn: string; hi: string; icon: string }> = {
-  annapurna:        { en: 'Annapurna Bhandar', bn: 'অন্নপূর্ণা ভাণ্ডার', hi: 'अन्नपूर्णा भंडार', icon: '🛍️' },
-  ayushman:         { en: 'Ayushman Bharat',   bn: 'আয়ুষ্মান ভারত',     hi: 'आयुष्मान भारत',   icon: '🏥' },
-  ration:           { en: 'Ration Card',        bn: 'রেশন কার্ড',         hi: 'राशन कार्ड',       icon: '📋' },
-  bank:             { en: 'Bank Account',       bn: 'ব্যাংক অ্যাকাউন্ট', hi: 'बैंक खाता',        icon: '🏦' },
-  krishak:          { en: 'Krishak Bandhu',     bn: 'কৃষক বন্ধু',        hi: 'किसान बंधु',       icon: '🌾' },
-  'krishak-bandhu': { en: 'Krishak Bandhu',     bn: 'কৃষক বন্ধু',        hi: 'किसान बंधु',       icon: '🌾' },
+const FORM_INFO: Record<string, { en: string; bn: string; hi: string }> = {
+  annapurna:        { en: 'Annapurna Bhandar', bn: 'অন্নপূর্ণা ভাণ্ডার', hi: 'अन्नपूर्णा भंडार' },
+  ayushman:         { en: 'Ayushman Bharat',   bn: 'আয়ুষ্মান ভারত',     hi: 'आयुष्मान भारत'   },
+  ration:           { en: 'Ration Card',        bn: 'রেশন কার্ড',         hi: 'राशन कार्ड'       },
+  bank:             { en: 'Bank Account',       bn: 'ব্যাংক অ্যাকাউন্ট', hi: 'बैंक खाता'        },
+  krishak:          { en: 'Krishak Bandhu',     bn: 'কৃষক বন্ধু',        hi: 'किसान बंधु'       },
+  'krishak-bandhu': { en: 'Krishak Bandhu',     bn: 'কৃষক বন্ধু',        hi: 'किसान बंधु'       },
 }
 
 const STEP_DESCRIPTIONS: Record<number, { en: string; bn: string }> = {
@@ -51,39 +51,34 @@ export default function FormPage() {
     <main className="min-h-screen bg-background flex flex-col">
 
       {/* ── Branded navy header with logo ── */}
-      <header className="sticky top-0 z-40 border-b border-white/10">
+      <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
         <div
           className="relative px-4 sm:px-6 py-3 flex items-center gap-3"
-          style={{ background: 'linear-gradient(135deg, #111E4A 0%, #1B2E6B 60%, #2A3F8F 100%)' }}
         >
           {/* Back button */}
           <button
             onClick={() => router.push('/dashboard')}
-            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors"
-            style={{ background: 'oklch(1 0 0 / 0.1)', border: '1px solid oklch(1 0 0 / 0.15)' }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors bg-gray-100 hover:bg-gray-200 border border-gray-200"
             aria-label="Back to dashboard"
           >
-            <ArrowLeft className="w-4 h-4 text-white" />
+            <ArrowLeft className="w-4 h-4 text-gray-700" />
           </button>
 
           {/* Logo */}
           <div className="relative w-8 h-8 shrink-0">
             <Image
               src="/logo.png"
-              alt="Shohoj Form"
+              alt="Sohoj Form"
               fill
-              className="object-contain drop-shadow-md"
+              className="object-contain"
               priority
             />
           </div>
 
           {/* Form name + step desc */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-sm">{form.icon}</span>
-              <p className="font-bold text-white text-sm truncate">{getFormName()}</p>
-            </div>
-            <p className="text-[11px] text-white/55 truncate mt-0.5">
+            <p className="font-bold text-gray-900 text-sm truncate">{getFormName()}</p>
+            <p className="text-[11px] text-gray-400 truncate">
               {language === 'bn' ? stepDesc?.bn : stepDesc?.en}
             </p>
           </div>
@@ -92,8 +87,7 @@ export default function FormPage() {
           <div className="relative shrink-0">
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-white/80 transition-all"
-              style={{ background: 'oklch(1 0 0 / 0.10)', border: '1px solid oklch(1 0 0 / 0.15)' }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium text-gray-600 transition-all bg-gray-100 border border-gray-200 hover:bg-gray-200"
             >
               <Globe className="w-3.5 h-3.5" />
               <span>{languageNames[language]}</span>
@@ -108,7 +102,7 @@ export default function FormPage() {
                       key={lang}
                       onClick={() => { setLanguage(lang); setShowLangMenu(false) }}
                       className={`px-2.5 py-2 text-xs rounded-lg transition-all font-medium text-left ${
-                        language === lang ? 'text-white' : 'text-foreground hover:bg-muted'
+                        language === lang ? 'text-white' : 'text-gray-700 hover:bg-gray-100'
                       }`}
                       style={language === lang ? { background: '#1B2E6B' } : {}}
                     >
@@ -121,11 +115,8 @@ export default function FormPage() {
           </div>
         </div>
 
-        {/* Teal accent line */}
-        <div
-          className="h-[2px] w-full"
-          style={{ background: 'linear-gradient(90deg, #2EC4A7, #1FA88C 50%, transparent)' }}
-        />
+        {/* Brand accent line */}
+        <div className="h-[2px] w-full" style={{ background: 'linear-gradient(90deg, oklch(0.28 0.085 258), oklch(0.55 0.15 230) 50%, transparent)' }} />
       </header>
 
       {/* Step progress bar */}
@@ -135,10 +126,13 @@ export default function FormPage() {
       <div className="flex-1">
         {currentStep === 1 && <Step1Upload />}
         {currentStep === 2 && <Step2Documents />}
-        {currentStep === 3 && <Step3Voice />}
+        {currentStep === 3 && <Step4Review />}
         {currentStep === 4 && <Step4Review />}
         {currentStep === 5 && <Step5Done />}
       </div>
+
+      {/* Persistent floating voice panel — visible from step 2 onward */}
+      {currentStep >= 2 && currentStep <= 4 && <FloatingVoicePanel />}
     </main>
   )
 }

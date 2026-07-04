@@ -2,18 +2,10 @@
 
 import { useFormContext } from '@/lib/form-context'
 import { speak } from '@/lib/tts'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  FileDown,
-  Hand,
-  CheckCircle2,
-  Loader2,
-  ChevronLeft,
-  ChevronRight,
-  Volume2,
-  VolumeX,
-  RotateCcw,
-  Download,
+  CheckCircle2, RotateCcw, Download, Eye, X,
+  Volume2, FileText, ChevronLeft, ChevronRight,
   Sparkles,
 } from 'lucide-react'
 import { VoiceGuideBar, useVoiceGuide } from './voice-guide-bar'
@@ -30,469 +22,222 @@ interface WalkthroughStep {
 }
 
 export function Step5Done() {
-  const { finalFieldMap, documents, formImages, resetForm } = useFormContext()
-
-  // Output states
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [pdfReady, setPdfReady] = useState(false)
-  const [pdfError, setPdfError] = useState('')
+  const { finalFieldMap, documents, formImages, extractedFields, resetForm } = useFormContext()
+  const [showView, setShowView] = useState(false)
   const [walkthrough, setWalkthrough] = useState<WalkthroughStep[]>([])
-
-  // Walkthrough carousel state
-  const [showWalkthrough, setShowWalkthrough] = useState(false)
-  const [walkthroughIndex, setWalkthroughIndex] = useState(0)
-  const [captionSpeaking, setCaptionSpeaking] = useState(false)
-
-  const imgRef = useRef<HTMLImageElement>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
   const guide = useVoiceGuide()
 
-  // Build a combined field map from docs + voice
+  // Build real extracted data directly from context — no demo values
   const allDocFields = documents.flatMap((doc) =>
-    doc.extractedData.map((f) => ({
+    doc.extractedData
+      .filter((f) => f.value && f.value.trim() !== '')
+      .map((f) => ({
+        id: `${doc.documentType}_${f.id}`,
+        fieldName: f.fieldName,
+        bengaliName: f.bengaliName || f.fieldName,
+        value: f.value,
+        source: 'document' as const,
+      }))
+  )
+
+  const voiceFields = Object.values(finalFieldMap)
+    .filter((f) => f.source === 'voice' && f.value?.trim())
+
+  const voicePanelFields = extractedFields
+    .filter((f) => f.currentValue && f.currentValue.trim() !== '')
+    .filter((f) => !allDocFields.find((d) => d.fieldName === f.fieldName))
+    .map((f) => ({
       id: f.id,
       fieldName: f.fieldName,
-      bengaliName: f.bengaliName,
-      value: f.value,
-      source: 'document' as const,
-      documentType: doc.documentType,
+      bengaliName: f.bengaliName || f.fieldName,
+      value: f.currentValue!,
+      source: 'voice' as const,
     }))
-  )
-  const voiceFields = Object.values(finalFieldMap).filter((f) => f.source === 'voice')
-  const allFields = [...allDocFields, ...voiceFields]
 
+  const allFields = [...allDocFields, ...voiceFields, ...voicePanelFields]
   const totalFields = allFields.length
-  const formPreviewImage = formImages[0]?.thumbnail || null
+  const formImage = formImages[0]?.thumbnail || null
 
-  // Auto-generate on mount, then speak entry
+  // Speak success on mount
   useEffect(() => {
-    handleGenerate().then(() => {
-      setTimeout(() => guide.say(AGENT_LINES.step5Enter.bn, AGENT_LINES.step5Enter.en), 800)
-    })
+    const t = setTimeout(() => guide.say(AGENT_LINES.step5Enter.bn, AGENT_LINES.step5Enter.en), 800)
+    return () => clearTimeout(t)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleGenerate = async () => {
+  // Generate walkthrough from real data
+  const generateWalkthrough = async () => {
     setIsGenerating(true)
-    setPdfError('')
     try {
-      const fieldMapForApi: Record<string, { value: string; fieldName: string; bengaliName: string; source: string }> = {}
+      const fieldMapForApi: Record<string, any> = {}
       allFields.forEach((f) => {
-        fieldMapForApi[f.id] = { value: f.value, fieldName: f.fieldName, bengaliName: f.bengaliName, source: f.source }
+        fieldMapForApi[f.id] = {
+          value: f.value,
+          fieldName: f.fieldName,
+          bengaliName: f.bengaliName,
+          source: f.source,
+        }
       })
-
       const res = await fetch('/api/generate-output', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ finalFieldMap: fieldMapForApi, formId: 'krishak-bandhu' }),
+        body: JSON.stringify({ finalFieldMap: fieldMapForApi }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Generation failed')
-
-      setWalkthrough(data.walkthrough || [])
-      setPdfReady(true)
-    } catch (err) {
-      setPdfError('Failed to generate. Please try again. · তৈরি করতে ব্যর্থ হয়েছে।')
+      if (data.walkthrough) setWalkthrough(data.walkthrough)
+    } catch {
+      // Fallback: build walkthrough directly from allFields without API
+      const steps: WalkthroughStep[] = allFields.map((f, i) => {
+        const totalF = allFields.length
+        const yPos = totalF > 1 ? 10 + (i / (totalF - 1)) * 75 : 45
+        return {
+          fieldId: f.id,
+          fieldName: f.fieldName,
+          bengaliName: f.bengaliName,
+          value: f.value,
+          captionEn: `Write your ${f.fieldName}: ${f.value}`,
+          captionBn: `${f.bengaliName} লিখুন: ${f.value}`,
+          bbox: { x: 8, y: yPos, width: 55, height: 5, pagePercent: true },
+        }
+      })
+      setWalkthrough(steps)
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const handleDownloadPDF = () => {
-    guide.say(AGENT_LINES.step5Download.bn, AGENT_LINES.step5Download.en)
-    const pdfContent = `SOHOJ FORM - FILLED APPLICATION\n${'='.repeat(40)}\n\n${allFields.map((f) => `${f.fieldName} (${f.bengaliName}): ${f.value}`).join('\n')}\n\n${'='.repeat(40)}\nGenerated by Sohoj Form · সহজ ফর্ম`
-    const blob = new Blob([pdfContent], { type: 'text/plain' })
+  const handleViewForm = async () => {
+    if (walkthrough.length === 0) await generateWalkthrough()
+    setShowView(true)
+  }
+
+  const handleSpeak = async (id: string, bn: string, value: string) => {
+    setSpeakingId(id)
+    try {
+      await speak(`${bn}: ${value}`)
+    } finally {
+      setSpeakingId(null)
+    }
+  }
+
+  const handleDownload = () => {
+    guide.say('ফর্ম ডাউনলোড হচ্ছে।', 'Downloading.')
+    const lines = [
+      'SOHOJ FORM — সহজ ফর্ম',
+      '='.repeat(50),
+      '',
+      ...allFields.map((f) => `${f.fieldName} (${f.bengaliName}): ${f.value}`),
+      '',
+      '='.repeat(50),
+      `Powered by Gemma 3 4B · Generated ${new Date().toLocaleString('bn-BD')}`,
+    ]
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `sohoj-form-filled-${Date.now()}.txt`
+    a.download = `sohoj-form-${Date.now()}.txt`
     a.click()
     URL.revokeObjectURL(url)
   }
 
-  const speakCaption = async (step: WalkthroughStep) => {
-    setCaptionSpeaking(true)
-    try {
-      await speak(step.captionBn, step.captionEn)
-    } finally {
-      setCaptionSpeaking(false)
-    }
-  }
-
-  const currentWalkStep = walkthrough[walkthroughIndex]
-
-  if (isGenerating) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 flex flex-col items-center animate-fade-in">
-        <div className="relative w-20 h-20 mb-6">
-          <div className="absolute inset-0 rounded-full border-4 border-border" />
-          <div
-            className="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin"
-            style={{ borderColor: 'oklch(0.28 0.085 258)', borderTopColor: 'transparent' }}
-          />
-          <div
-            className="absolute inset-2 rounded-full border-2 border-t-transparent animate-spin"
-            style={{ borderColor: 'oklch(0.72 0.18 65)', borderTopColor: 'transparent', animationDirection: 'reverse', animationDuration: '0.8s' }}
-          />
-          <Sparkles className="absolute inset-0 m-auto w-6 h-6" style={{ color: 'oklch(0.28 0.085 258)' }} />
-        </div>
-        <p className="font-bold text-foreground text-lg mb-1">Generating your filled form...</p>
-        <p className="text-muted-foreground text-sm">আপনার পূরণ করা ফর্ম তৈরি হচ্ছে...</p>
-        <p className="text-xs text-muted-foreground mt-4 text-center max-w-xs">
-          We're filling in {totalFields} fields from your documents and voice answers ·
-          {totalFields}টি ফিল্ড পূরণ করা হচ্ছে
-        </p>
-      </div>
-    )
-  }
-
-  if (pdfError) {
-    return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 flex flex-col items-center animate-fade-in">
-        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-          <span className="text-3xl">❌</span>
-        </div>
-        <p className="font-bold text-foreground text-lg mb-1">Something went wrong</p>
-        <p className="text-muted-foreground text-sm mb-6">{pdfError}</p>
-        <button
-          onClick={handleGenerate}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl text-white font-semibold transition-all active:scale-95"
-          style={{ background: 'oklch(0.28 0.085 258)' }}
-        >
-          <RotateCcw className="w-4 h-4" />
-          Try again · আবার চেষ্টা করুন
-        </button>
-      </div>
-    )
-  }
-
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+
       {/* Success header */}
       <div className="text-center mb-10 animate-fade-in">
-        {/* Animated check */}
         <div className="relative w-20 h-20 mx-auto mb-5">
-          <div
-            className="absolute inset-0 rounded-full animate-pulse opacity-20"
-            style={{ background: 'oklch(0.55 0.15 155)' }}
-          />
-          <div
-            className="w-20 h-20 rounded-full flex items-center justify-center"
-            style={{ background: 'oklch(0.55 0.15 155)' }}
-          >
-            <svg viewBox="0 0 24 24" fill="none" className="w-10 h-10">
-              <path
-                d="M5 13l4 4L19 7"
-                stroke="white"
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  strokeDasharray: 24,
-                  strokeDashoffset: 0,
-                  animation: 'check-draw 0.5s ease 0.2s both',
-                }}
-              />
-            </svg>
+          <div className="absolute inset-0 rounded-full animate-pulse opacity-20" style={{ background: 'oklch(0.55 0.15 155)' }} />
+          <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: 'oklch(0.55 0.15 155)' }}>
+            <CheckCircle2 className="w-10 h-10 text-white" />
           </div>
         </div>
-
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: 'oklch(0.28 0.085 258)' }}>5</div>
-          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 5 · ধাপ ৫</span>
-        </div>
         <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
-          Done! <span className="gradient-text">সম্পন্ন!</span>
+          সম্পন্ন! <span className="text-muted-foreground font-normal text-2xl">Done</span>
         </h2>
-        <p className="text-muted-foreground text-sm sm:text-base max-w-sm mx-auto">
-          Your form has been filled with {totalFields} fields ·
-          <span className="font-semibold text-foreground"> {totalFields}টি ফিল্ড </span>
-          পূরণ হয়েছে
+        <p className="text-muted-foreground text-sm">
+          {totalFields > 0
+            ? `${totalFields}টি তথ্য বের করা হয়েছে · ${totalFields} fields extracted`
+            : 'ফর্ম বিশ্লেষণ সম্পন্ন'}
         </p>
       </div>
 
-      {/* Two output cards */}
-      {!showWalkthrough ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 animate-fade-in delay-200">
-          {/* Card 1: Download PDF */}
-          <button
-            onClick={handleDownloadPDF}
-            className="group relative overflow-hidden rounded-2xl border-2 border-border p-6 bg-white text-left card-hover active:scale-95 transition-all"
-          >
-            <div
-              className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-5 -translate-y-1/3 translate-x-1/3"
-              style={{ background: 'oklch(0.28 0.085 258)' }}
-            />
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
-              style={{ background: 'oklch(0.28 0.085 258 / 0.1)' }}
-            >
-              <FileDown className="w-7 h-7" style={{ color: 'oklch(0.28 0.085 258)' }} />
-            </div>
-            <h3 className="font-bold text-foreground text-base mb-1">
-              Download Filled Form
-            </h3>
-            <p className="text-xs text-muted-foreground mb-1">ভরা ফর্ম ডাউনলোড করুন</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Get your completed form as a PDF file ·
-              পূরণ করা ফর্মটি PDF হিসেবে পান
-            </p>
-            <div
-              className="mt-4 flex items-center gap-2 text-sm font-semibold"
-              style={{ color: 'oklch(0.28 0.085 258)' }}
-            >
-              <Download className="w-4 h-4" />
-              Download PDF · ডাউনলোড
-            </div>
-          </button>
+      {/* Action cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 animate-fade-in">
 
-          {/* Card 2: Hand-fill walkthrough */}
-          <button
-            onClick={() => { setShowWalkthrough(true); setWalkthroughIndex(0) }}
-            className="group relative overflow-hidden rounded-2xl border-2 border-border p-6 bg-white text-left card-hover active:scale-95 transition-all"
-          >
-            <div
-              className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-5 -translate-y-1/3 translate-x-1/3"
-              style={{ background: 'oklch(0.72 0.18 65)' }}
-            />
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform"
-              style={{ background: 'oklch(0.72 0.18 65 / 0.15)' }}
-            >
-              <Hand className="w-7 h-7" style={{ color: 'oklch(0.50 0.15 65)' }} />
-            </div>
-            <h3 className="font-bold text-foreground text-base mb-1">
-              Guided Hand-Fill
-            </h3>
-            <p className="text-xs text-muted-foreground mb-1">হাতে লেখার গাইড দেখুন</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              Step-by-step guide showing exactly where to write each field ·
-              প্রতিটি ফিল্ড কোথায় লিখতে হবে ধাপে ধাপে দেখুন
-            </p>
-            <div
-              className="mt-4 flex items-center gap-2 text-sm font-semibold"
-              style={{ color: 'oklch(0.50 0.15 65)' }}
-            >
-              <Hand className="w-4 h-4" />
-              Start Walkthrough · গাইড শুরু করুন
-            </div>
-          </button>
-        </div>
-      ) : (
-        /* Walkthrough Carousel */
-        <div className="mb-8 animate-fade-in rounded-2xl border-2 border-border overflow-hidden bg-white">
-          {/* Carousel header */}
-          <div
-            className="px-5 py-3 flex items-center justify-between"
-            style={{ background: 'oklch(0.28 0.085 258)' }}
-          >
-            <span className="text-white font-semibold text-sm">
-              Hand-Fill Guide · হাতে লেখার গাইড
-            </span>
-            <div className="flex items-center gap-3">
-              <span className="text-white/70 text-xs">
-                Field {walkthroughIndex + 1} of {walkthrough.length} ·{' '}
-                {walkthroughIndex + 1}/{walkthrough.length}
-              </span>
-              <button
-                onClick={() => setShowWalkthrough(false)}
-                className="text-white/70 hover:text-white text-xs underline"
-              >
-                Close · বন্ধ
-              </button>
-            </div>
+        {/* View Filled Form — PRIMARY */}
+        <button
+          onClick={handleViewForm}
+          disabled={isGenerating}
+          className="group relative overflow-hidden rounded-2xl border-2 border-border p-6 bg-white text-left hover:border-blue-200 hover:shadow-md transition-all active:scale-95 disabled:opacity-60"
+        >
+          <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-5 -translate-y-1/3 translate-x-1/3" style={{ background: 'oklch(0.28 0.085 258)' }} />
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform" style={{ background: 'oklch(0.28 0.085 258 / 0.1)' }}>
+            {isGenerating
+              ? <Sparkles className="w-7 h-7 animate-spin" style={{ color: 'oklch(0.28 0.085 258)' }} />
+              : <Eye className="w-7 h-7" style={{ color: 'oklch(0.28 0.085 258)' }} />}
           </div>
-
-          {/* Progress bar */}
-          <div className="h-1 bg-border">
-            <div
-              className="h-full transition-all duration-500"
-              style={{
-                width: `${((walkthroughIndex + 1) / walkthrough.length) * 100}%`,
-                background: 'oklch(0.72 0.18 65)',
-              }}
-            />
+          <h3 className="font-bold text-foreground text-base mb-1">পূরণ করা ফর্ম দেখুন</h3>
+          <p className="text-xs text-muted-foreground mb-1">View Filled Form</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            ধাপে ধাপে দেখুন কোন ঘরে কী লিখতে হবে · Step-by-step guide showing where to write each value
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-sm font-semibold" style={{ color: 'oklch(0.28 0.085 258)' }}>
+            <Eye className="w-4 h-4" />
+            {isGenerating ? 'তৈরি হচ্ছে...' : 'গাইড দেখুন · View Guide'}
           </div>
+        </button>
 
-          {/* Form image with bounding box overlay */}
-          <div className="relative bg-gray-50 flex items-center justify-center" style={{ minHeight: 320 }}>
-            {formPreviewImage ? (
-              <div className="relative w-full">
-                <img
-                  ref={imgRef}
-                  src={formPreviewImage}
-                  alt="Form"
-                  className="w-full object-contain max-h-80"
-                />
-                {currentWalkStep && (
-                  <div
-                    className="bbox-overlay transition-all duration-400"
-                    style={{
-                      left: `${currentWalkStep.bbox.x}%`,
-                      top: `${currentWalkStep.bbox.y}%`,
-                      width: `${currentWalkStep.bbox.width}%`,
-                      height: `${currentWalkStep.bbox.height}%`,
-                    }}
-                  />
-                )}
-              </div>
-            ) : (
-              /* Placeholder form mockup when no image uploaded */
-              <div className="w-full max-w-sm p-6 relative">
-                <div className="bg-white border-2 border-border rounded-xl p-4 shadow-sm">
-                  <div className="text-center border-b border-border pb-3 mb-4">
-                    <p className="font-bold text-sm text-foreground">Government Application Form</p>
-                    <p className="text-xs text-muted-foreground">সরকারি আবেদন ফর্ম</p>
-                  </div>
-                  {/* Fake form lines with highlight on current */}
-                  {[
-                    { label: 'Name · নাম', id: 'a2' },
-                    { label: 'Date of Birth · জন্ম তারিখ', id: 'a3' },
-                    { label: 'Aadhaar · আধার', id: 'a1' },
-                    { label: 'Land Area · জমি', id: 'l1' },
-                    { label: 'Account No. · অ্যাকাউন্ট', id: 'b1' },
-                  ].map((row) => {
-                    const isActive = currentWalkStep?.fieldId === row.id
-                    return (
-                      <div
-                        key={row.id}
-                        className={`mb-2 rounded-lg px-3 py-2 transition-all duration-300 ${
-                          isActive
-                            ? 'ring-2 ring-offset-1'
-                            : 'border border-border/50'
-                        }`}
-                        style={
-                          isActive
-                            ? { background: 'oklch(0.96 0.05 65)', outline: '2px solid oklch(0.72 0.18 65)', outlineOffset: '1px' }
-                            : { background: 'oklch(0.97 0 0)' }
-                        }
-                      >
-                        <p className="text-xs text-muted-foreground">{row.label}</p>
-                        {isActive && currentWalkStep && (
-                          <p className="text-sm font-bold text-foreground mt-0.5">{currentWalkStep.value}</p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+        {/* Download */}
+        <button
+          onClick={handleDownload}
+          className="group relative overflow-hidden rounded-2xl border-2 border-border p-6 bg-white text-left hover:border-green-200 hover:shadow-md transition-all active:scale-95"
+        >
+          <div className="absolute top-0 right-0 w-28 h-28 rounded-full opacity-5 -translate-y-1/3 translate-x-1/3" style={{ background: 'oklch(0.55 0.15 155)' }} />
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-105 transition-transform" style={{ background: 'oklch(0.55 0.15 155 / 0.1)' }}>
+            <Download className="w-7 h-7" style={{ color: 'oklch(0.38 0.12 155)' }} />
           </div>
-
-          {/* Caption */}
-          {currentWalkStep && (
-            <div className="px-5 py-4 border-t border-border">
-              <div className="flex items-start gap-3 mb-3">
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold text-white"
-                  style={{ background: 'oklch(0.72 0.18 65)' }}
-                >
-                  {walkthroughIndex + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-foreground text-sm">{currentWalkStep.captionEn}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{currentWalkStep.captionBn}</p>
-                </div>
-                <button
-                  onClick={() => speakCaption(currentWalkStep)}
-                  className={`p-2 rounded-xl transition-colors shrink-0 ${captionSpeaking ? 'text-white' : 'hover:bg-muted'}`}
-                  style={captionSpeaking ? { background: 'oklch(0.28 0.085 258)' } : {}}
-                  title="Read caption aloud · ক্যাপশন পড়ুন"
-                >
-                  {captionSpeaking ? (
-                    <VolumeX className="w-4 h-4 text-white" />
-                  ) : (
-                    <Volume2 className="w-4 h-4 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-
-              {/* Write value hint */}
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm"
-                style={{ background: 'oklch(0.72 0.18 65 / 0.1)', color: 'oklch(0.40 0.12 65)' }}
-              >
-                <span className="text-base">✏️</span>
-                <span className="font-semibold">{currentWalkStep.value}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation */}
-          <div className="px-5 py-4 border-t border-border flex items-center justify-between gap-4">
-            <button
-              onClick={() => { setWalkthroughIndex((i) => Math.max(0, i - 1)); setCaptionSpeaking(false) }}
-              disabled={walkthroughIndex === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-white text-sm font-semibold text-foreground hover:bg-muted/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Prev · আগে
-            </button>
-
-            {/* Dot indicators */}
-            <div className="flex gap-1.5">
-              {walkthrough.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setWalkthroughIndex(i)}
-                  className="w-2 h-2 rounded-full transition-all duration-300"
-                  style={{
-                    background: i === walkthroughIndex
-                      ? 'oklch(0.28 0.085 258)'
-                      : i < walkthroughIndex
-                      ? 'oklch(0.72 0.18 65)'
-                      : 'oklch(0.88 0.01 240)',
-                  }}
-                />
-              ))}
-            </div>
-
-            {walkthroughIndex < walkthrough.length - 1 ? (
-              <button
-                onClick={() => { setWalkthroughIndex((i) => i + 1); setCaptionSpeaking(false) }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 shadow-sm"
-                style={{ background: 'oklch(0.28 0.085 258)' }}
-              >
-                Next · পরে
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowWalkthrough(false)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 shadow-sm"
-                style={{ background: 'oklch(0.55 0.15 155)' }}
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Done · সম্পন্ন
-              </button>
-            )}
+          <h3 className="font-bold text-foreground text-base mb-1">সারাংশ ডাউনলোড</h3>
+          <p className="text-xs text-muted-foreground mb-1">Download Summary</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            সব তথ্য একটি ফাইলে সংরক্ষণ করুন · Save all extracted data as a text file
+          </p>
+          <div className="mt-4 flex items-center gap-2 text-sm font-semibold" style={{ color: 'oklch(0.38 0.12 155)' }}>
+            <Download className="w-4 h-4" />
+            ডাউনলোড · Download
           </div>
-        </div>
-      )}
+        </button>
+      </div>
 
       {/* Field summary */}
-      {pdfReady && (
-        <div className="rounded-2xl border border-border bg-white overflow-hidden mb-8 animate-fade-in delay-300">
-          <div className="px-5 py-3 border-b border-border">
+      {allFields.length > 0 && (
+        <div className="rounded-2xl border border-border bg-white overflow-hidden mb-8 animate-fade-in">
+          <div className="px-5 py-3 border-b border-border flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Summary · সারাংশ ({totalFields} fields · ফিল্ড)
+              বের করা তথ্য · Extracted Fields ({totalFields})
             </p>
           </div>
-          <div className="divide-y divide-border/60 max-h-64 overflow-y-auto">
+          <div className="divide-y divide-border/60 max-h-72 overflow-y-auto">
             {allFields.map((f) => (
               <div key={f.id} className="flex items-center gap-3 px-5 py-3">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground truncate">{f.fieldName} · {f.bengaliName}</p>
-                  <p className="text-sm font-semibold text-foreground truncate">{f.value}</p>
+                  <p className="text-[11px] text-muted-foreground">{f.fieldName} · {f.bengaliName}</p>
+                  <p className="text-sm font-semibold text-foreground mt-0.5 truncate">{f.value}</p>
                 </div>
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full font-medium shrink-0"
-                  style={{
-                    background: f.source === 'voice' ? 'oklch(0.72 0.18 65 / 0.15)' : 'oklch(0.28 0.085 258 / 0.1)',
-                    color: f.source === 'voice' ? 'oklch(0.45 0.14 65)' : 'oklch(0.28 0.085 258)',
-                  }}
-                >
-                  {f.source === 'voice' ? 'Voice · ভয়েস' : 'Doc · ডক'}
-                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{
+                      background: f.source === 'voice' ? 'oklch(0.72 0.18 65 / 0.15)' : 'oklch(0.28 0.085 258 / 0.1)',
+                      color: f.source === 'voice' ? 'oklch(0.45 0.14 65)' : 'oklch(0.28 0.085 258)',
+                    }}>
+                    {f.source === 'voice' ? 'Voice' : 'Doc'}
+                  </span>
+                  <button onClick={() => handleSpeak(f.id, f.bengaliName, f.value)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                    <Volume2 className={`w-3.5 h-3.5 ${speakingId === f.id ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -500,13 +245,13 @@ export function Step5Done() {
       )}
 
       {/* Start over */}
-      <div className="text-center animate-fade-in delay-400">
+      <div className="text-center animate-fade-in">
         <button
           onClick={() => { resetForm(); window.location.href = '/dashboard' }}
           className="flex items-center gap-2 mx-auto text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
-          Start another form · আরেকটি ফর্ম শুরু করুন
+          আরেকটি ফর্ম শুরু করুন · Start another form
         </button>
       </div>
 
@@ -517,6 +262,226 @@ export function Step5Done() {
         onMute={guide.setMuted}
         onDismiss={guide.silence}
       />
+
+      {/* Walkthrough carousel modal */}
+      {showView && walkthrough.length > 0 && (
+        <WalkthroughModal
+          walkthrough={walkthrough}
+          formImage={formImage}
+          onClose={() => setShowView(false)}
+        />
+      )}
+
+      {/* Fallback: no walkthrough, just show image + list */}
+      {showView && walkthrough.length === 0 && (
+        <SimpleViewModal
+          formImage={formImage}
+          allFields={allFields}
+          onClose={() => setShowView(false)}
+          onSpeak={handleSpeak}
+          speakingId={speakingId}
+        />
+      )}
+    </div>
+  )
+}
+
+// ── Walkthrough carousel modal (bbox highlighting) ────────────────────────────
+
+function WalkthroughModal({
+  walkthrough,
+  formImage,
+  onClose,
+}: {
+  walkthrough: WalkthroughStep[]
+  formImage: string | null
+  onClose: () => void
+}) {
+  const [idx, setIdx] = useState(0)
+  const [speaking, setSpeaking] = useState(false)
+  const imgRef = useRef<HTMLImageElement>(null)
+  const step = walkthrough[idx]
+
+  const speakStep = async () => {
+    setSpeaking(true)
+    try { await speak(step.captionBn) } finally { setSpeaking(false) }
+  }
+
+  // Auto-speak when step changes
+  useEffect(() => { speakStep() }, [idx])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex flex-col" onClick={onClose}>
+      <div
+        className="relative w-full max-w-2xl mx-auto mt-4 mb-4 rounded-2xl overflow-hidden bg-white shadow-2xl flex flex-col"
+        style={{ maxHeight: '95vh' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3 text-white" style={{ background: 'oklch(0.28 0.085 258)' }}>
+          <div>
+            <span className="font-semibold text-sm">হাতে লেখার গাইড · Hand-Fill Guide</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-white/70 text-xs">Field {idx + 1} of {walkthrough.length} · {idx + 1}/{walkthrough.length}</span>
+            <button onClick={onClose} className="text-white/70 hover:text-white text-xs underline">বন্ধ · Close</button>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-1 bg-gray-200">
+          <div
+            className="h-full transition-all duration-500"
+            style={{ width: `${((idx + 1) / walkthrough.length) * 100}%`, background: 'oklch(0.72 0.18 65)' }}
+          />
+        </div>
+
+        {/* Form image with bbox */}
+        <div className="relative bg-gray-100 flex items-center justify-center overflow-hidden" style={{ minHeight: 260 }}>
+          {formImage ? (
+            <div className="relative w-full">
+              <img
+                ref={imgRef}
+                src={formImage}
+                alt="Form"
+                className="w-full object-contain max-h-72"
+              />
+              {/* Bbox highlight overlay */}
+              {step && (
+                <div
+                  className="absolute transition-all duration-500 pointer-events-none"
+                  style={{
+                    left: `${step.bbox.x}%`,
+                    top: `${step.bbox.y}%`,
+                    width: `${step.bbox.width}%`,
+                    height: `${step.bbox.height}%`,
+                    border: '2.5px solid oklch(0.72 0.18 65)',
+                    background: 'oklch(0.72 0.18 65 / 0.18)',
+                    borderRadius: 4,
+                    boxShadow: '0 0 0 9999px oklch(0 0 0 / 0.4)',
+                  }}
+                />
+              )}
+            </div>
+          ) : (
+            /* Placeholder mockup when no image */
+            <div className="w-full max-w-sm p-6">
+              <div className="bg-white border-2 border-border rounded-xl p-4 shadow-sm">
+                <p className="font-bold text-sm text-center border-b pb-2 mb-3">Government Form</p>
+                {walkthrough.map((s, i) => (
+                  <div key={s.fieldId}
+                    className={`mb-2 px-3 py-2 rounded-lg border transition-all ${i === idx ? 'border-amber-400 bg-amber-50' : 'border-gray-200'}`}>
+                    <p className="text-xs text-gray-500">{s.bengaliName}</p>
+                    {i === idx && <p className="text-sm font-bold text-gray-900 mt-0.5">{s.value}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Caption */}
+        {step && (
+          <div className="px-5 py-4 border-t border-gray-200">
+            <div className="flex items-start gap-3 mb-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                style={{ background: 'oklch(0.72 0.18 65)' }}>
+                {idx + 1}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900 text-sm">{step.captionEn}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{step.captionBn}</p>
+              </div>
+              <button
+                onClick={speakStep}
+                className={`p-2 rounded-xl transition-colors shrink-0 ${speaking ? 'text-white' : 'hover:bg-gray-100'}`}
+                style={speaking ? { background: 'oklch(0.28 0.085 258)' } : {}}
+              >
+                <Volume2 className={`w-4 h-4 ${speaking ? 'text-white animate-pulse' : 'text-gray-500'}`} />
+              </button>
+            </div>
+
+            {/* Value to write */}
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm" style={{ background: 'oklch(0.72 0.18 65 / 0.1)', color: 'oklch(0.40 0.12 65)' }}>
+              <span className="text-base">✏️</span>
+              <span className="font-bold">{step.value}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="px-5 py-4 border-t border-gray-200 flex items-center justify-between">
+          <button
+            onClick={() => setIdx((i) => Math.max(0, i - 1))}
+            disabled={idx === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all disabled:opacity-40"
+          >
+            <ChevronLeft className="w-4 h-4" /> Prev · আগে
+          </button>
+
+          {/* Dots */}
+          <div className="flex gap-1.5">
+            {walkthrough.map((_, i) => (
+              <button key={i} onClick={() => setIdx(i)}
+                className="w-2 h-2 rounded-full transition-all duration-300"
+                style={{
+                  background: i === idx ? 'oklch(0.28 0.085 258)' : i < idx ? 'oklch(0.72 0.18 65)' : 'oklch(0.88 0.01 240)',
+                }}
+              />
+            ))}
+          </div>
+
+          {idx < walkthrough.length - 1 ? (
+            <button
+              onClick={() => setIdx((i) => i + 1)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all active:scale-95 shadow-sm"
+              style={{ background: 'oklch(0.28 0.085 258)' }}
+            >
+              Next · পরে <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={onClose}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-all"
+              style={{ background: 'oklch(0.55 0.15 155)' }}
+            >
+              <CheckCircle2 className="w-4 h-4" /> সম্পন্ন · Done
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Simple fallback modal (no bbox data) ──────────────────────────────────────
+
+function SimpleViewModal({ formImage, allFields, onClose, onSpeak, speakingId }: any) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl overflow-hidden shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b" style={{ background: 'oklch(0.28 0.085 258)' }}>
+          <span className="font-semibold text-white text-sm">পূরণ করা তথ্য · Filled Values</span>
+          <button onClick={onClose} className="text-white/70 hover:text-white"><X className="w-4 h-4" /></button>
+        </div>
+        {formImage && <img src={formImage} alt="Form" className="w-full max-h-48 object-contain bg-gray-100" />}
+        <div className="flex-1 overflow-y-auto divide-y">
+          {allFields.map((f: any) => (
+            <div key={f.id} className="flex items-center gap-3 px-4 py-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-gray-500">{f.bengaliName}</p>
+                <p className="text-sm font-bold text-gray-900">{f.value}</p>
+              </div>
+              <button onClick={() => onSpeak(f.id, f.bengaliName, f.value)} className="p-1.5">
+                <Volume2 className={`w-4 h-4 ${speakingId === f.id ? 'text-blue-600 animate-pulse' : 'text-gray-400'}`} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="px-4 py-3 border-t">
+          <button onClick={onClose} className="w-full py-2 rounded-xl text-sm font-semibold text-white" style={{ background: 'oklch(0.28 0.085 258)' }}>বন্ধ করুন · Close</button>
+        </div>
+      </div>
     </div>
   )
 }
