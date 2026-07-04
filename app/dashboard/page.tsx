@@ -17,7 +17,7 @@ const FORMS = [
     enDesc: 'Public distribution system registration',
     bnDesc: 'সর্বজনীন বিতরণ ব্যবস্থায় নিবন্ধন',
     hiDesc: 'जन वितरण प्रणाली पंजीकरण',
-    icon: '🛍️',
+    icon: 'APB',
     gradient: 'from-blue-500/15 to-sky-400/10',
     iconBg: 'from-blue-500 to-sky-400',
     accent: 'oklch(0.55 0.15 230)',
@@ -30,7 +30,7 @@ const FORMS = [
     enDesc: 'National health protection scheme',
     bnDesc: 'জাতীয় স্বাস্থ্য সুরক্ষা প্রকল্প',
     hiDesc: 'राष्ट्रीय स्वास्थ्य सुरक्षा योजना',
-    icon: '🏥',
+    icon: 'AB',
     gradient: 'from-emerald-500/15 to-green-400/10',
     iconBg: 'from-emerald-500 to-green-400',
     accent: 'oklch(0.55 0.15 155)',
@@ -43,7 +43,7 @@ const FORMS = [
     enDesc: 'Food subsidy entitlement document',
     bnDesc: 'খাদ্য ভর্তুকির যোগ্যতার নথি',
     hiDesc: 'खाद्य सब्सिडी पात्रता दस्तावेज़',
-    icon: '📋',
+    icon: 'RC',
     gradient: 'from-violet-500/15 to-purple-400/10',
     iconBg: 'from-violet-500 to-purple-400',
     accent: 'oklch(0.55 0.15 295)',
@@ -56,7 +56,7 @@ const FORMS = [
     enDesc: 'Jan Dhan government bank scheme',
     bnDesc: 'জন ধন সরকারি ব্যাংক প্রকল্প',
     hiDesc: 'जन धन सरकारी बैंक योजना',
-    icon: '🏦',
+    icon: 'BA',
     gradient: 'from-orange-500/15 to-amber-400/10',
     iconBg: 'from-orange-500 to-amber-400',
     accent: 'oklch(0.62 0.18 55)',
@@ -69,7 +69,7 @@ const FORMS = [
     enDesc: 'Farmer assistance and welfare scheme',
     bnDesc: 'কৃষক সহায়তা ও কল্যাণ প্রকল্প',
     hiDesc: 'किसान सहायता और कल्याण योजना',
-    icon: '🌾',
+    icon: 'KB',
     gradient: 'from-amber-500/15 to-yellow-400/10',
     iconBg: 'from-amber-500 to-yellow-400',
     accent: 'oklch(0.68 0.17 75)',
@@ -215,7 +215,7 @@ export default function DashboardPage() {
                 <div className="p-5 pb-4">
                   <div className="flex items-start justify-between mb-4">
                     <div
-                      className={`w-12 h-12 rounded-xl bg-gradient-to-br ${form.iconBg} flex items-center justify-center text-2xl shadow-sm`}
+                      className={`w-10 h-10 rounded-xl bg-gradient-to-br ${form.iconBg} flex items-center justify-center text-xs font-bold text-white shadow-sm`}
                     >
                       {form.icon}
                     </div>

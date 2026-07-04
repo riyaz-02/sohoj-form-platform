@@ -269,102 +269,182 @@ const TIPS = [
   { en: 'Sohoj Form supports Krishak Bandhu, Ayushman Bharat, and more.', bn: 'কৃষক বন্ধু, আয়ুষ্মান ভারত সহ বহু ফর্ম সহজ করা যায়।' },
 ]
 
+// ── Google TTS helper ───────────────────────────────────────────────
+async function speakBengali(text: string) {
+  try {
+    const res = await fetch(`/api/tts?text=${encodeURIComponent(text)}&lang=bn`)
+    if (!res.ok) throw new Error('tts fail')
+    const blob = await res.blob()
+    const url  = URL.createObjectURL(blob)
+    const audio = new Audio(url)
+    audio.play().catch(() => {})
+  } catch {
+    // silent fail — no browser fallback (robotic)
+  }
+}
+
+// ── Narration lines per stage ────────────────────────────────────────
+const NARRATION = [
+  'ছবিটি স্ক্যান করা হচ্ছে। একটু অপেক্ষা করুন।',
+  'Gemma AI ফর্মটি পড়ছে এবং তথ্য সংগ্রহ করছে।',
+  'ফর্মের সব ঘর চিহ্নিত করা হচ্ছে।',
+  'সব তথ্য বাংলায় অনুবাদ করা হচ্ছে।',
+]
+
 function AnalyzingScreen() {
-  const [stageIdx, setStageIdx] = useState(0)
-  const [tipIdx, setTipIdx] = useState(0)
-  const [progress, setProgress] = useState(0)
-  const [elapsed, setElapsed] = useState(0)
+  const [stageIdx, setStageIdx]   = useState(0)
+  const [prevStage, setPrevStage] = useState(-1)
+  const [tipIdx, setTipIdx]       = useState(0)
+  const [progress, setProgress]   = useState(0)
+  const [elapsed, setElapsed]     = useState(0)
 
+  // Elapsed counter
   useEffect(() => {
-    // Elapsed seconds counter
-    const tick = setInterval(() => setElapsed((s) => s + 1), 1000)
-    return () => clearInterval(tick)
+    const t = setInterval(() => setElapsed((s) => s + 1), 1000)
+    return () => clearInterval(t)
   }, [])
 
+  // Progress animation
   useEffect(() => {
-    // Smooth progress animation (target ~90% over 90 seconds, never reaches 100)
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 90) return p + 0.02
-        return Math.min(p + (90 - p) * 0.025, 98)
-      })
+    const iv = setInterval(() => {
+      setProgress((p) => p >= 90 ? p + 0.015 : Math.min(p + (90 - p) * 0.025, 98))
     }, 500)
-    return () => clearInterval(interval)
+    return () => clearInterval(iv)
   }, [])
 
+  // Advance stage based on progress
   useEffect(() => {
-    // Advance stages based on progress
     const idx = progress < 15 ? 0 : progress < 65 ? 1 : progress < 85 ? 2 : 3
     setStageIdx(idx)
   }, [progress])
 
+  // Speak when stage changes (Google TTS — natural voice)
   useEffect(() => {
-    // Rotate tips every 6 seconds
+    if (stageIdx !== prevStage) {
+      setPrevStage(stageIdx)
+      speakBengali(NARRATION[stageIdx])
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageIdx])
+
+  // Rotate tips
+  useEffect(() => {
     const t = setInterval(() => setTipIdx((i) => (i + 1) % TIPS.length), 6000)
     return () => clearInterval(t)
   }, [])
 
-  const mins = Math.floor(elapsed / 60)
-  const secs = elapsed % 60
+  const mins    = Math.floor(elapsed / 60)
+  const secs    = elapsed % 60
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
 
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center px-4 py-8 max-w-lg mx-auto">
-      {/* Central animated indicator */}
-      <div className="relative mb-5">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center"
-          style={{ background: 'oklch(0.28 0.085 258 / 0.08)', border: '2px solid oklch(0.28 0.085 258 / 0.15)' }}>
-          <span className="text-sm font-bold text-gray-600 animate-pulse">{STAGES[stageIdx].label}</span>
+    <div className="min-h-[65vh] flex flex-col items-center justify-center px-4 py-6 max-w-md mx-auto">
+
+      {/* ── Central AI Core with expanding rings ── */}
+      <div className="relative flex items-center justify-center mb-6 float-anim">
+        {/* Expanding rings */}
+        <div className="absolute w-24 h-24 rounded-full ring-1"
+             style={{ background: '#1B2E6B15' }} />
+        <div className="absolute w-24 h-24 rounded-full ring-2"
+             style={{ background: '#2EC4A715' }} />
+        <div className="absolute w-24 h-24 rounded-full ring-3"
+             style={{ background: '#1B2E6B10' }} />
+
+        {/* Core circle */}
+        <div className="relative w-20 h-20">
+          {/* Background fill */}
+          <div className="absolute inset-0 rounded-full"
+               style={{ background: 'linear-gradient(135deg, #1B2E6B, #2A4A9F)' }} />
+          {/* Stage label */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-white text-sm font-bold tracking-wide shimmer-anim">
+              {STAGES[stageIdx].label}
+            </span>
+          </div>
+          {/* Spinning progress arc */}
+          <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="38" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="2" />
+            <circle
+              cx="40" cy="40" r="38" fill="none"
+              stroke="#2EC4A7" strokeWidth="2.5"
+              strokeDasharray="239"
+              strokeDashoffset={239 - (239 * progress / 100)}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+            />
+          </svg>
         </div>
-        {/* Spinning ring */}
-        <svg className="absolute inset-0 w-20 h-20 -rotate-90 animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 80 80">
-          <circle cx="40" cy="40" r="37" fill="none" stroke="oklch(0.28 0.085 258 / 0.1)" strokeWidth="3" />
-          <circle cx="40" cy="40" r="37" fill="none" stroke="oklch(0.28 0.085 258)" strokeWidth="3"
-            strokeDasharray="232" strokeDashoffset="184" strokeLinecap="round" />
-        </svg>
       </div>
 
-      {/* Stage label */}
-      <h2 className="text-xl font-bold text-gray-900 text-center mb-1">{STAGES[stageIdx].en}</h2>
-      <p className="text-base text-gray-500 text-center mb-6">{STAGES[stageIdx].bn}</p>
+      {/* Stage name — animated slide-in */}
+      <div key={stageIdx} className="text-center mb-4 slide-in-up">
+        <h2 className="text-lg font-bold text-gray-900">{STAGES[stageIdx].en}</h2>
+        <p className="text-sm text-gray-500 mt-0.5">{STAGES[stageIdx].bn}</p>
+      </div>
 
       {/* Progress bar */}
-      <div className="w-full bg-gray-100 rounded-full h-2 mb-2 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${progress}%`, background: 'linear-gradient(90deg, oklch(0.28 0.085 258), oklch(0.55 0.15 230))' }}
-        />
-      </div>
-      <div className="flex justify-between w-full text-xs text-gray-400 mb-8">
-        <span>{Math.round(progress)}% complete</span>
-        <span>{timeStr} elapsed</span>
+      <div className="w-full mb-1">
+        <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${progress}%`, background: 'linear-gradient(90deg, #1B2E6B, #2EC4A7)' }}
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-[11px] text-gray-400">
+          <span>{Math.round(progress)}% সম্পন্ন</span>
+          <span>{timeStr} অতিবাহিত</span>
+        </div>
       </div>
 
-      {/* Stage dots */}
-      <div className="flex items-center gap-3 mb-6">
+      {/* Stage steps row */}
+      <div className="flex items-start w-full mt-4 mb-5">
         {STAGES.map((s, i) => (
-          <div key={i} className="flex flex-col items-center gap-1">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
-              i < stageIdx ? 'bg-green-100 text-green-600' :
-              i === stageIdx ? 'text-white shadow-md scale-110' : 'bg-gray-100 text-gray-400'
-            }`} style={i === stageIdx ? { background: 'oklch(0.28 0.085 258)' } : {}}>
-              {i < stageIdx ? '✓' : s.label}
+          <div key={i} className="flex flex-col items-center flex-1">
+            {/* Connector + dot row */}
+            <div className="flex items-center w-full">
+              {i > 0 && (
+                <div className="flex-1 h-px mx-1" style={{ background: i <= stageIdx ? '#2EC4A7' : '#E5E7EB' }} />
+              )}
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${
+                  i < stageIdx  ? 'text-white' :
+                  i === stageIdx ? 'text-white scale-110' :
+                  'text-gray-400'
+                }`}
+                style={{
+                  background: i < stageIdx ? '#2EC4A7' : i === stageIdx ? '#1B2E6B' : '#E5E7EB',
+                  boxShadow: i === stageIdx ? '0 0 0 4px #1B2E6B18' : 'none',
+                }}
+              >
+                {i < stageIdx ? '✓' : s.label}
+              </div>
+              {i < STAGES.length - 1 && (
+                <div className="flex-1 h-px mx-1" style={{ background: i < stageIdx ? '#2EC4A7' : '#E5E7EB' }} />
+              )}
             </div>
-            <span className={`text-[9px] font-medium ${i === stageIdx ? 'text-gray-700' : 'text-gray-400'}`}>{s.bn}</span>
+            {/* Label */}
+            <span
+              className={`text-[9px] mt-1 text-center font-medium px-0.5 leading-tight ${
+                i === stageIdx ? 'font-bold' : 'text-gray-400'
+              }`}
+              style={{ color: i === stageIdx ? '#1B2E6B' : undefined }}
+            >
+              {s.bn}
+            </span>
           </div>
         ))}
       </div>
 
-      {/* Rotating tip */}
-      <div className="w-full rounded-xl border border-blue-100 bg-blue-50 p-4">
-        <p className="text-[11px] font-semibold text-blue-500 uppercase tracking-wide mb-1">Did you know?</p>
-        <p className="text-sm font-medium text-gray-700 leading-relaxed">{TIPS[tipIdx].en}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{TIPS[tipIdx].bn}</p>
+      {/* Rotating tip card */}
+      <div key={tipIdx} className="w-full rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50 px-4 py-3 slide-in-up">
+        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">তথ্য</p>
+        <p className="text-sm font-medium text-gray-800 leading-relaxed">{TIPS[tipIdx].bn}</p>
       </div>
 
-      <p className="text-xs text-gray-400 mt-4 text-center">
-        Running Gemma 3 4B locally · CPU inference takes 1–2 minutes
+      <p className="text-[10px] text-gray-400 mt-3 text-center">
+        Gemma 3 4B · CPU inference · ১–২ মিনিট সময় লাগতে পারে
       </p>
     </div>
   )
 }
+
