@@ -120,9 +120,9 @@ export async function callOllamaVision(prompt: string, imageDataUrls: string[]):
         prompt,
         images,
         stream: false,
-        options: { temperature: 0.1, top_p: 0.8, num_predict: 2048 },
+        options: { temperature: 0.1, top_p: 0.8, num_predict: 1024 },
       }),
-      signal: AbortSignal.timeout(180_000), // 3 min for vision inference
+      signal: AbortSignal.timeout(600_000), // 10 min for vision inference (CPU ~8 t/s)
     })
 
     if (!res.ok) {

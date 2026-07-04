@@ -29,54 +29,16 @@ export interface FormField {
 
 // ── Shared analysis prompt (works with Ollama + Gemini) ───────────────────
 
-const ANALYZE_PROMPT = `You are an expert OCR system for Indian government application forms.
+const ANALYZE_PROMPT = `You are an OCR system for Indian government forms. Analyze the form image and extract ALL blank fields.
 
-TASK: Analyze the form image(s) and extract ALL blank fields the applicant must fill.
+Return ONLY this JSON:
+{"formTitle":"form title","fields":[{"id":"snake_case_id","fieldName":"English label","bengaliName":"Bengali label","currentValue":"","fieldType":"text","required":true,"category":"personal"}]}
 
-OUTPUT FORMAT — return ONLY this JSON, nothing else:
-{
-  "formTitle": "Detected form title in English",
-  "fields": [
-    {
-      "id": "snake_case_unique_id",
-      "fieldName": "Exact English label from the form",
-      "bengaliName": "Bengali translation of the label",
-      "currentValue": "",
-      "fieldType": "text|date|number|checkbox|select",
-      "required": true,
-      "category": "personal|land|financial|other"
-    }
-  ]
-}
+fieldType options: text, date, number, checkbox, select
+category options: personal, land, financial, other
+Bengali translations: Name→নাম, Aadhaar→আধার নম্বর, DOB→জন্ম তারিখ, Father→পিতার নাম, Bank Account→অ্যাকাউন্ট নম্বর, IFSC→IFSC কোড, Village→গ্রাম, District→জেলা, Mobile→মোবাইল নম্বর, Income→আয়, Gender→লিঙ্গ, Address→ঠিকানা
 
-STRICT RULES:
-1. Include EVERY blank field — name, DOB, Aadhaar, PAN, address, bank account, IFSC, land area, khasra, income, signature box, etc.
-2. DO NOT include pre-printed values already filled on the form
-3. Translate field labels to Bengali ACCURATELY (not word-for-word, use proper Bengali govt terminology):
-   - "Applicant Name" → "আবেদনকারীর নাম"
-   - "Aadhaar Number" → "আধার কার্ড নম্বর"
-   - "Date of Birth" → "জন্ম তারিখ"
-   - "Father's Name" → "পিতার নাম"
-   - "Bank Account Number" → "ব্যাংক অ্যাকাউন্ট নম্বর"
-   - "IFSC Code" → "IFSC কোড"
-   - "Annual Income" → "বার্ষিক আয়"
-   - "Khasra Number" → "খাসরা নম্বর"
-   - "Land Area" → "জমির পরিমাণ"
-   - "Village" → "গ্রাম"
-   - "District" → "জেলা"
-   - "State" → "রাজ্য"
-   - "PIN Code" → "পিন কোড"
-   - "Mobile Number" → "মোবাইল নম্বর"
-   - "Gender" → "লিঙ্গ"
-   - "Category" → "শ্রেণী"
-4. ID naming: use snake_case like "applicant_name", "aadhaar_number", "bank_account_number"
-5. category:
-   - personal = name, DOB, gender, address, Aadhaar, phone, caste, religion
-   - land = khasra, plot, dag, mouza, village, bigha, survey, patta
-   - financial = bank account, IFSC, income, PAN, tax
-   - other = everything else
-6. required = true for all mandatory fields (marked with * or required text)
-7. Return ONLY the JSON. No markdown, no explanation, no code fences.`
+Rules: Include every blank field. Never include pre-filled values. Return ONLY valid JSON.`
 
 // ── Field cleaner ──────────────────────────────────────────────────────────
 
