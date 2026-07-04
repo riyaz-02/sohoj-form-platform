@@ -268,6 +268,21 @@ export default function LoginPage() {
               <p className="text-center text-xs text-muted-foreground/60 mt-5">
                 {L('Free · Secure', 'বিনামূল্যে · নিরাপদ')}
               </p>
+
+              {/* Skip Login — hackathon demo shortcut */}
+              <div className="mt-6 pt-5 border-t border-border/50 text-center">
+                <p className="text-xs text-muted-foreground mb-2">
+                  {L('Evaluating or demoing?', 'মূল্যায়ন বা ডেমো করছেন?')}
+                </p>
+                <button
+                  id="skip-login-btn"
+                  onClick={() => router.push('/dashboard')}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-70 transition-opacity"
+                  style={{ color: 'oklch(0.28 0.085 258)' }}
+                >
+                  {L('Skip Login → Enter as Guest', 'লগইন এড়িয়ে চলুন → অতিথি হিসেবে প্রবেশ করুন')}
+                </button>
+              </div>
             </div>
           ) : (
             <div className="animate-fade-in">
@@ -346,6 +361,17 @@ export default function LoginPage() {
                 <p className="text-sm text-muted-foreground mb-2">{L("Didn't get the code?", 'কোড পাননি?')}</p>
                 <button onClick={resetToPhone} className="text-sm font-bold hover:opacity-70" style={{ color: 'oklch(0.28 0.085 258)' }}>
                   {L('Resend OTP', 'আবার পাঠান')}
+                </button>
+              </div>
+
+              {/* Skip Login on OTP screen too */}
+              <div className="mt-6 pt-5 border-t border-border/50 text-center">
+                <button
+                  onClick={() => router.push('/dashboard')}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold hover:opacity-70 transition-opacity"
+                  style={{ color: 'oklch(0.28 0.085 258)' }}
+                >
+                  {L('Skip Login → Enter as Guest', 'লগইন এড়িয়ে চলুন → অতিথি হিসেবে প্রবেশ করুন')}
                 </button>
               </div>
             </div>

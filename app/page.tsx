@@ -214,7 +214,7 @@ export default function HomePage() {
       </header>
 
       {/* ── HERO ── */}
-      <section className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-16 sm:py-24">
+      <section className="relative z-10 flex-1 flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
         <div className="max-w-3xl w-full text-center">
 
           {/* Live badge */}
@@ -225,20 +225,20 @@ export default function HomePage() {
             <span className="text-muted-foreground">Gemini AI</span>
           </div>
 
-          {/* Logo hero image */}
-          <div className="flex justify-center mb-8 animate-fade-in delay-75">
+          {/* Logo hero image — static, no floating animation */}
+          <div className="flex justify-center mb-5 animate-fade-in delay-75">
             <Image
               src="/logo.png"
               alt="Shohoj Form"
-              width={160}
-              height={160}
-              className="object-contain drop-shadow-lg animate-float"
+              width={100}
+              height={100}
+              className="object-contain drop-shadow-lg"
               priority
             />
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-bold mb-3 animate-fade-in delay-100 leading-tight tracking-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-2 animate-fade-in delay-100 leading-tight tracking-tight">
             <span className="gradient-text">{t.title}</span>
           </h1>
           {t.titleSub !== t.title && (
