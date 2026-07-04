@@ -9,7 +9,7 @@ import { VoiceGuideBar, useVoiceGuide } from './voice-guide-bar'
 import { AGENT_LINES } from '@/lib/voice-guide'
 
 export function Step1Upload() {
-  const { formImages, addFormImage, removeFormImage, clearFormImages, isAnalyzing, setIsAnalyzing, setCurrentStep, setExtractedFields, setRequiredDocuments, setFormTitle } = useFormContext()
+  const { formImages, formId, addFormImage, removeFormImage, clearFormImages, isAnalyzing, setIsAnalyzing, setCurrentStep, setExtractedFields, setRequiredDocuments, setFormTitle } = useFormContext()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [error, setError] = useState('')
@@ -55,7 +55,7 @@ export function Step1Upload() {
       const res = await fetch('/api/analyze-form', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ images, imageCount: formImages.length }),
+        body: JSON.stringify({ images, imageCount: formImages.length, formType: formId }),
       })
       const data = await res.json()
 
@@ -78,20 +78,45 @@ export function Step1Upload() {
       }
 
       if (isDemo) {
-        // Speak demo mode notice in Bengali
-        guide.say('ডেমো মোডে চলছে। AI দিয়ে পড়তে বাস্তব নথি আপলোড করুন।', 'Running in demo mode. Upload real documents to use AI extraction.')
+        guide.say('ডেমো মোডে চলছে।', 'Running in demo mode.')
+        setTimeout(() => setCurrentStep(2), 1400)
       } else {
-        guide.say(AGENT_LINES.step1Done.bn, AGENT_LINES.step1Done.en)
+        // ── Smart voice announcement ──────────────────────────────────────
+        // Build: "আপলোড করা ফর্মটি হলো [title]. এই ফর্মটি পূরণ করতে [docs] প্রয়োজন।"
+        const detectedTitle = data.formTitle || 'একটি সরকারি ফর্ম'
+        const reqDocs: Array<{ bengaliName: string; englishName: string }> = data.requiredDocuments || []
+
+        let docPhrase = ''
+        if (reqDocs.length === 1) {
+          docPhrase = reqDocs[0].bengaliName
+        } else if (reqDocs.length === 2) {
+          docPhrase = `${reqDocs[0].bengaliName} এবং ${reqDocs[1].bengaliName}`
+        } else if (reqDocs.length >= 3) {
+          const last = reqDocs[reqDocs.length - 1].bengaliName
+          const rest = reqDocs.slice(0, -1).map((d) => d.bengaliName).join(', ')
+          docPhrase = `${rest} এবং ${last}`
+        }
+
+        const narration = docPhrase
+          ? `আপলোড করা ফর্মটি হলো ${detectedTitle}। এই ফর্মটি পূরণ করতে আপনার ${docPhrase} প্রয়োজন।`
+          : `আপলোড করা ফর্মটি হলো ${detectedTitle}।`
+
+        // Speak via Google TTS (natural voice) — non-blocking
+        speakBengali(narration)
+
+        // Navigate to step 2 after giving enough time to hear the announcement
+        // Estimated: ~5s for a 2-doc narration sentence
+        const delay = 1000 + narration.length * 60 // ~60ms per character
+        setTimeout(() => setCurrentStep(2), Math.min(delay, 6000))
       }
-      setTimeout(() => setCurrentStep(2), 1400)
     } catch (err: any) {
       const quota = err.message?.includes('ব্যস্ত') || err.message?.includes('busy') || err.message?.includes('quota') || err.message?.includes('429')
       setIsQuotaError(quota)
-      setError(err.message || 'ফর্ম পড়তে সমস্যা হয়েছে। পরিষ্কার ছবি তুলে আবার চেষ্টা করুন।')
+      setError(err.message || 'ফর্ম পড়তে সমস্যা হয়েছে। পরিষ্কার ছবি তুলে আবার চেষ্টা করুন।')
       if (quota) {
         guide.say('২০ সেকেন্ড অপেক্ষা করে আবার চেষ্টা করুন। AI এখন ব্যস্ত।', 'Please wait 20 seconds and try again. AI is busy.')
       } else {
-        guide.say('ফর্ম পড়তে সমস্যা হয়েছে। পরিষ্কার ছবি তুলে আবার চেষ্টা করুন।', 'Could not read the form. Please take a clearer photo.')
+        guide.say('ফর্ম পড়তে সমস্যা হয়েছে। পরিষ্কার ছবি তুলে আবার চেষ্টা করুন।', 'Could not read the form. Please take a clearer photo.')
       }
     } finally {
       setIsAnalyzing(false)
@@ -111,11 +136,11 @@ export function Step1Upload() {
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'oklch(0.28 0.085 258)' }}>1</div>
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 1 · ধাপ ১</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-          Upload Form <span className="text-muted-foreground font-normal text-xl">· ফর্ম আপলোড করুন</span>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+          ফর্মের ছবি তুলুন <span className="text-muted-foreground font-normal text-lg">· Upload Form</span>
         </h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Take a clear photo of your government form · আপনার সরকারি ফর্মের স্পষ্ট ছবি তুলুন
+        <p className="text-muted-foreground mt-1.5 text-sm leading-relaxed">
+          যেকোনো সরকারি ফর্মের ছবি তুলুন — AI নিজেই চিনবে এবং কোন কোন নথি লাগবে জানিয়ে দেবে
         </p>
       </div>
 
@@ -255,10 +280,10 @@ export function Step1Upload() {
 // ── Animated analyzing screen ─────────────────────────────────────────────────
 
 const STAGES = [
-  { label: 'S', en: 'Scanning image', bn: 'ছবি স্ক্যান করছি', duration: 15 },
-  { label: 'AI', en: 'Gemma AI reading form', bn: 'Gemma AI ফর্ম পড়ছে', duration: 50 },
-  { label: 'F', en: 'Detecting all fields', bn: 'সব ঘর চিহ্নিত করছি', duration: 20 },
-  { label: 'B', en: 'Translating to Bengali', bn: 'বাংলায় অনুবাদ করছি', duration: 15 },
+  { en: 'Scanning image', bn: 'ছবি স্ক্যান করছি', duration: 15 },
+  { en: 'Gemma AI reading form', bn: 'Gemma AI ফর্ম পড়ছে', duration: 50 },
+  { en: 'Detecting all fields', bn: 'সব ঘর চিহ্নিত করছি', duration: 20 },
+  { en: 'Translating to Bengali', bn: 'বাংলায় অনুবাদ করছি', duration: 15 },
 ]
 
 const TIPS = [
@@ -355,11 +380,15 @@ function AnalyzingScreen() {
           {/* Background fill */}
           <div className="absolute inset-0 rounded-full"
                style={{ background: 'linear-gradient(135deg, #1B2E6B, #2A4A9F)' }} />
-          {/* Stage label */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-white text-sm font-bold tracking-wide shimmer-anim">
-              {STAGES[stageIdx].label}
-            </span>
+          {/* Animated dots — no letter labels */}
+          <div className="absolute inset-0 flex items-center justify-center gap-1">
+            {[0, 1, 2].map((d) => (
+              <div
+                key={d}
+                className="w-1.5 h-1.5 rounded-full bg-white"
+                style={{ animation: `bounce 1.2s ease-in-out ${d * 0.2}s infinite` }}
+              />
+            ))}
           </div>
           {/* Spinning progress arc */}
           <svg className="absolute inset-0 w-20 h-20 -rotate-90" viewBox="0 0 80 80">
@@ -376,8 +405,8 @@ function AnalyzingScreen() {
         </div>
       </div>
 
-      {/* Stage name — animated slide-in */}
-      <div key={stageIdx} className="text-center mb-4 slide-in-up">
+      {/* Stage name — single element, no key trick, no ghost text */}
+      <div className="text-center mb-4">
         <h2 className="text-lg font-bold text-gray-900">{STAGES[stageIdx].en}</h2>
         <p className="text-sm text-gray-500 mt-0.5">{STAGES[stageIdx].bn}</p>
       </div>
@@ -396,27 +425,27 @@ function AnalyzingScreen() {
         </div>
       </div>
 
-      {/* Stage steps row */}
+      {/* Stage steps row — dots only, no letter labels */}
       <div className="flex items-start w-full mt-4 mb-5">
         {STAGES.map((s, i) => (
-          <div key={i} className="flex flex-col items-center flex-1">
+          <div key={`stage-dot-${i}`} className="flex flex-col items-center flex-1">
             {/* Connector + dot row */}
             <div className="flex items-center w-full">
               {i > 0 && (
                 <div className="flex-1 h-px mx-1" style={{ background: i <= stageIdx ? '#2EC4A7' : '#E5E7EB' }} />
               )}
               <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0 ${
-                  i < stageIdx  ? 'text-white' :
-                  i === stageIdx ? 'text-white scale-110' :
-                  'text-gray-400'
-                }`}
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 shrink-0"
                 style={{
                   background: i < stageIdx ? '#2EC4A7' : i === stageIdx ? '#1B2E6B' : '#E5E7EB',
-                  boxShadow: i === stageIdx ? '0 0 0 4px #1B2E6B18' : 'none',
+                  boxShadow: i === stageIdx ? '0 0 0 3px #1B2E6B18' : 'none',
                 }}
               >
-                {i < stageIdx ? '✓' : s.label}
+                {i < stageIdx
+                  ? <span className="text-white text-[10px]">✓</span>
+                  : i === stageIdx
+                    ? <span className="text-white text-[9px]">●</span>
+                    : <span className="text-gray-400 text-[9px]">○</span>}
               </div>
               {i < STAGES.length - 1 && (
                 <div className="flex-1 h-px mx-1" style={{ background: i < stageIdx ? '#2EC4A7' : '#E5E7EB' }} />
@@ -424,10 +453,8 @@ function AnalyzingScreen() {
             </div>
             {/* Label */}
             <span
-              className={`text-[9px] mt-1 text-center font-medium px-0.5 leading-tight ${
-                i === stageIdx ? 'font-bold' : 'text-gray-400'
-              }`}
-              style={{ color: i === stageIdx ? '#1B2E6B' : undefined }}
+              className="text-[9px] mt-1 text-center font-medium px-0.5 leading-tight"
+              style={{ color: i === stageIdx ? '#1B2E6B' : i < stageIdx ? '#2EC4A7' : '#94A3B8' }}
             >
               {s.bn}
             </span>
@@ -435,8 +462,8 @@ function AnalyzingScreen() {
         ))}
       </div>
 
-      {/* Rotating tip card */}
-      <div key={tipIdx} className="w-full rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50 px-4 py-3 slide-in-up">
+      {/* Rotating tip card — unique key avoids collision with stage keys */}
+      <div key={`tip-${tipIdx}`} className="w-full rounded-xl border border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50 px-4 py-3">
         <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">তথ্য</p>
         <p className="text-sm font-medium text-gray-800 leading-relaxed">{TIPS[tipIdx].bn}</p>
       </div>

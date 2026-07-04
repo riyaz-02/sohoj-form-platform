@@ -25,15 +25,18 @@ export interface FormField {
   fieldType: 'text' | 'date' | 'number' | 'checkbox' | 'select'
   required: boolean
   category: 'personal' | 'land' | 'financial' | 'other'
+  /** Vertical position on form image as percentage from top (0–100). Used for bbox highlighting. */
+  yPercent?: number
 }
 
 // ── Shared analysis prompt (works with Ollama + Gemini) ───────────────────
 
 const ANALYZE_PROMPT = `You are an OCR system for Indian government forms. Analyze the form image and extract ALL blank fields.
 
-Return ONLY this JSON:
-{"formTitle":"form title","fields":[{"id":"snake_case_id","fieldName":"English label","bengaliName":"Bengali label","currentValue":"","fieldType":"text","required":true,"category":"personal"}]}
+Return ONLY this JSON (no markdown, no explanation):
+{"formTitle":"form title","fields":[{"id":"snake_case_id","fieldName":"English label","bengaliName":"Bengali label","currentValue":"","fieldType":"text","required":true,"category":"personal","yPercent":15}]}
 
+yPercent = approximate vertical position of the field label on the form image, as a percentage from the TOP (0 = very top, 100 = very bottom). First field ~10%, last field ~90%.
 fieldType options: text, date, number, checkbox, select
 category options: personal, land, financial, other
 Bengali translations: Name→নাম, Aadhaar→আধার নম্বর, DOB→জন্ম তারিখ, Father→পিতার নাম, Bank Account→অ্যাকাউন্ট নম্বর, IFSC→IFSC কোড, Village→গ্রাম, District→জেলা, Mobile→মোবাইল নম্বর, Income→আয়, Gender→লিঙ্গ, Address→ঠিকানা
@@ -51,6 +54,10 @@ function cleanFields(fields: FormField[]): FormField[] {
     fieldType: f.fieldType || 'text',
     required: f.required !== false,
     category: f.category || 'other',
+    // Preserve yPercent if the model returned a valid value, else undefined
+    yPercent: (typeof f.yPercent === 'number' && f.yPercent >= 0 && f.yPercent <= 100)
+      ? f.yPercent
+      : undefined,
   }))
 }
 
@@ -70,14 +77,29 @@ export async function POST(request: NextRequest) {
       const rawText = await callOllamaVision(ANALYZE_PROMPT, images)
 
       if (rawText) {
-        const parsed = parseGemmaJSON<{ formTitle?: string; fields: FormField[] }>(rawText)
-        if (parsed && Array.isArray(parsed.fields) && parsed.fields.length > 0) {
-          const cleanedFields = cleanFields(parsed.fields)
+        // Ollama sometimes returns a bare array [fields] instead of {formTitle, fields}
+        // normalise both shapes into a consistent {formTitle, fields} structure
+        const parsed = parseGemmaJSON<{ formTitle?: string; fields: FormField[] } | FormField[]>(rawText)
+
+        let fields: FormField[] | null = null
+        let formTitle = ''
+
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Bare array response — treat directly as fields
+          fields = parsed as FormField[]
+          console.log('[analyze-form] Ollama returned bare array — treating as fields list')
+        } else if (parsed && !Array.isArray(parsed) && Array.isArray((parsed as any).fields)) {
+          fields = (parsed as any).fields
+          formTitle = (parsed as any).formTitle || ''
+        }
+
+        if (fields && fields.length > 0) {
+          const cleanedFields = cleanFields(fields)
           const requiredDocuments = deriveRequiredDocuments(cleanedFields, formType)
           console.log(`[analyze-form] Ollama extracted ${cleanedFields.length} fields`)
           return NextResponse.json({
             success: true,
-            formTitle: parsed.formTitle || '',
+            formTitle,
             fields: cleanedFields,
             fieldCount: cleanedFields.length,
             requiredDocuments,

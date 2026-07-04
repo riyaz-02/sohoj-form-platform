@@ -120,7 +120,7 @@ export async function callOllamaVision(prompt: string, imageDataUrls: string[]):
         prompt,
         images,
         stream: false,
-        options: { temperature: 0.1, top_p: 0.8, num_predict: 1024 },
+        options: { temperature: 0.1, top_p: 0.8, num_predict: 3000 },
       }),
       signal: AbortSignal.timeout(600_000), // 10 min for vision inference (CPU ~8 t/s)
     })
@@ -183,18 +183,56 @@ export function dataUrlToInlineData(dataUrl: string) {
   return { inlineData: { data: base64, mimeType } }
 }
 
-/** Parse JSON from model output — strips markdown code fences */
+/** Parse JSON from model output — strips markdown code fences, handles arrays, recovers truncation */
 export function parseGemmaJSON<T>(text: string): T | null {
-  try {
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim()
-    return JSON.parse(cleaned) as T
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/)
-    if (match) {
-      try { return JSON.parse(match[0]) as T } catch { /* ignore */ }
-    }
-    return null
+  // Step 1: strip markdown code fences (```json ... ```)
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim()
+
+  // Step 2: try direct parse (handles complete JSON)
+  try { return JSON.parse(cleaned) as T } catch { /* continue */ }
+
+  // Step 3: extract first complete {...} or [...] block
+  const objMatch   = cleaned.match(/\{[\s\S]*\}/)
+  const arrayMatch = cleaned.match(/\[[\s\S]*\]/)
+  const candidates = [objMatch?.[0], arrayMatch?.[0]]
+    .filter(Boolean)
+    .sort((a, b) => cleaned.indexOf(a!) - cleaned.indexOf(b!))
+  for (const c of candidates) {
+    try { return JSON.parse(c!) as T } catch { /* next */ }
   }
+
+  // Step 4: smart truncation recovery
+  // The model cut off mid-object (e.g. inside a string value).
+  // Find the last COMPLETE object boundary (last `},` or `}\n` or `}]`)
+  // and reconstruct a valid array from everything before it.
+  const lastCompleteObj = /\}\s*[,\]\n]/g
+  let lastIdx = -1
+  let m: RegExpExecArray | null
+  while ((m = lastCompleteObj.exec(cleaned)) !== null) lastIdx = m.index + 1
+
+  if (lastIdx > 0) {
+    // Find the outermost `[` before the first `{`
+    const arrayStart = cleaned.indexOf('[')
+    if (arrayStart >= 0 && arrayStart < lastIdx) {
+      const partial = cleaned.slice(arrayStart, lastIdx) + ']'
+      try {
+        const result = JSON.parse(partial) as T
+        console.warn('[parseGemmaJSON] Recovered', (result as any)?.length ?? '?', 'items from truncated response')
+        return result
+      } catch { /* not an array */ }
+    }
+    // Try as object-only (wrap content up to last complete field)
+    const objStart = cleaned.indexOf('{')
+    if (objStart >= 0) {
+      const partial = cleaned.slice(objStart, lastIdx) + '}'
+      try { return JSON.parse(partial) as T } catch { /* give up */ }
+    }
+  }
+
+  return null
 }
 
 export { genAI }

@@ -9,7 +9,7 @@ import { VoiceGuideBar, useVoiceGuide } from './voice-guide-bar'
 import { AGENT_LINES } from '@/lib/voice-guide'
 
 export function Step4Review() {
-  const { finalFieldMap, documents, updateFinalField, buildFinalFieldMap, setCurrentStep } = useFormContext()
+  const { finalFieldMap, documents, updateDocument, updateFinalField, buildFinalFieldMap, setCurrentStep } = useFormContext()
   const [speakingId, setSpeakingId] = useState<string | null>(null)
   const [isPlayingAll, setIsPlayingAll] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -67,7 +67,20 @@ export function Step4Review() {
   }
 
   const handleEditSave = (id: string) => {
+    // Update finalFieldMap (primary source for review display)
     updateFinalField(id, { value: editValue })
+    // Also sync back into documents.extractedData so the fallback render path
+    // (used when finalFieldMap was never built) also shows the edited value
+    documents.forEach((doc) => {
+      const hasField = doc.extractedData.some((f) => f.id === id)
+      if (hasField) {
+        updateDocument(doc.id, {
+          extractedData: doc.extractedData.map((f) =>
+            f.id === id ? { ...f, value: editValue } : f
+          ),
+        })
+      }
+    })
     setEditingId(null)
   }
 

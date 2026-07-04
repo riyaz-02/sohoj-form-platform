@@ -50,7 +50,7 @@ export async function speakText(bn: string, en?: string): Promise<void> {
   }
 
   // ── Fallback: browser Web Speech API ─────────────────────────────────
-  await browserSpeak(bn, en)
+  await browserSpeak(bn)
 }
 
 // ─── Currently playing audio element (for stop) ───────────────────────────

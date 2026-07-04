@@ -14,12 +14,19 @@ export interface ExtractedField {
   id: string
   fieldName: string
   bengaliName: string
+  /** Filled value (from voice or document extraction) */
   value: string
+  /** Pre-filled/default value from the form itself (from FormField API response) */
+  currentValue?: string
+  /** Input type from form analysis */
+  fieldType?: 'text' | 'date' | 'number' | 'checkbox' | 'select'
   confidence: number
   category: 'personal' | 'land' | 'financial' | 'other'
   needsReview: boolean
   source?: 'document' | 'voice'
   documentType?: string
+  /** Approximate vertical position on the form image (0–100%) from Step 1 AI analysis */
+  yPercent?: number
 }
 
 export interface DocumentData {
@@ -52,6 +59,9 @@ export interface FinalField {
 interface FormContextType {
   currentStep: number
   setCurrentStep: (step: number) => void
+  // Active form ID (slug from URL, e.g. 'bank', 'krishak')
+  formId: string
+  setFormId: (id: string) => void
   formImages: FormImage[]
   addFormImage: (image: FormImage) => void
   removeFormImage: (id: string) => void
@@ -86,6 +96,7 @@ const FormContext = createContext<FormContextType | undefined>(undefined)
 
 export function FormProvider({ children }: { children: React.ReactNode }) {
   const [currentStep, setCurrentStep] = useState(1)
+  const [formId, setFormId] = useState('')
   const [formImages, setFormImages] = useState<FormImage[]>([])
   const [extractedFields, setExtractedFields] = useState<ExtractedField[]>([])
   const [documents, setDocuments] = useState<DocumentData[]>([])
@@ -146,12 +157,14 @@ export function FormProvider({ children }: { children: React.ReactNode }) {
     setVoiceTranscript([])
     setCurrentVoiceFieldIndex(0)
     setFinalFieldMap({})
+    // Note: formId is intentionally NOT reset here — it comes from the URL
   }
 
   return (
     <FormContext.Provider
       value={{
         currentStep, setCurrentStep,
+        formId, setFormId,
         formImages, addFormImage, removeFormImage, clearFormImages,
         extractedFields, setExtractedFields, updateExtractedField,
         documents, setDocuments, addDocument, updateDocument,

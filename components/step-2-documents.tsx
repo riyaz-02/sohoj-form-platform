@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormContext, type DocumentData } from '@/lib/form-context'
-import { DOCUMENT_CATALOG, type DocumentType } from '@/lib/document-requirements'
+import { DOCUMENT_CATALOG, type DocumentType, isVoiceRequiredField } from '@/lib/document-requirements'
 import { ExtractedFieldCard } from './extracted-field-card'
 import { StepNavigator } from './step-navigator'
 import React, { useState, useEffect, useRef } from 'react'
@@ -62,15 +62,15 @@ export function Step2Documents() {
     setIsAnalyzing(true)
     setError('')
 
-    // Speak doc-specific prompt
-    const voiceMap: Record<string, { bn: string; en: string }> = {
-      aadhaar:           AGENT_LINES.step2UploadAadhaar,
-      pan:               AGENT_LINES.step2UploadPan,
-      'voter-id':        AGENT_LINES.step2UploadVoter,
-      'land-certificate':AGENT_LINES.step2UploadLand,
-      'bank-passbook':   AGENT_LINES.step2UploadBank,
+    // Speak: "Your X card is being analyzed" (photo already uploaded at this point)
+    const analyzingVoice: Record<string, { bn: string; en: string }> = {
+      aadhaar:           { bn: 'আপনার আধার কার্ড বিশ্লেষণ হচ্ছে', en: 'Your Aadhaar card is being analyzed' },
+      pan:               { bn: 'আপনার প্যান কার্ড বিশ্লেষণ হচ্ছে', en: 'Your PAN card is being analyzed' },
+      'voter-id':        { bn: 'আপনার ভোটার আইডি বিশ্লেষণ হচ্ছে', en: 'Your Voter ID is being analyzed' },
+      'land-certificate':{ bn: 'আপনার জমির কাগজ বিশ্লেষণ হচ্ছে', en: 'Your land document is being analyzed' },
+      'bank-passbook':   { bn: 'আপনার ব্যাংক পাসবুক বিশ্লেষণ হচ্ছে', en: 'Your bank passbook is being analyzed' },
     }
-    const voiceMsg = voiceMap[docType] || AGENT_LINES.step2Enter
+    const voiceMsg = analyzingVoice[docType] || { bn: 'নথি বিশ্লেষণ হচ্ছে', en: 'Document is being analyzed' }
     guide.say(voiceMsg.bn, voiceMsg.en)
 
     try {
@@ -133,26 +133,69 @@ export function Step2Documents() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-5">
+
+      {/* ── Form Detected Banner ─────────────────────────────────────────── */}
+      {formTitle && (
+        <div
+          className="mb-6 rounded-2xl p-4 sm:p-5 border animate-fade-in"
+          style={{ background: 'linear-gradient(135deg, #1B2E6B08, #2EC4A710)', borderColor: '#1B2E6B20' }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                 style={{ background: 'linear-gradient(135deg, #1B2E6B, #2A4A9F)' }}>
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-0.5">
+                AI ফর্ম চিনেছে
+              </p>
+              <h3 className="font-bold text-foreground text-base leading-tight">{formTitle}</h3>
+              {requiredDocuments.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  এই ফর্ম পূরণ করতে নিচের নথিগুলো প্রয়োজন
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Required documents chips */}
+          {requiredDocuments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3 pl-12">
+              {requiredDocuments.map((doc) => (
+                <span
+                  key={doc.type}
+                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border"
+                  style={{ background: '#1B2E6B0C', borderColor: '#1B2E6B20', color: '#1B2E6B' }}
+                >
+                  <span className="text-[10px] font-bold opacity-60">{doc.icon}</span>
+                  {doc.bengaliName}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
-      <div className="mb-8 animate-fade-in">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="mb-6 animate-fade-in">
+        <div className="flex items-center gap-2 mb-1.5">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold"
             style={{ background: 'oklch(0.28 0.085 258)' }}>2</div>
           <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Step 2 · ধাপ ২</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-foreground">
-          Upload Documents <span className="text-muted-foreground font-normal text-xl">· ডকুমেন্ট আপলোড</span>
+        <h2 className="text-xl sm:text-2xl font-bold text-foreground">
+          নথি আপলোড করুন <span className="text-muted-foreground font-normal text-lg">· Upload Documents</span>
         </h2>
-        <p className="text-muted-foreground mt-2 text-sm flex items-center gap-2">
+        <p className="text-muted-foreground mt-1 text-sm flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 shrink-0" style={{ color: 'oklch(0.72 0.18 65)' }} />
           {requiredDocuments.length > 0
-            ? `This form needs ${documents.length} document${documents.length > 1 ? 's' : ''} · এই ফর্মে ${documents.length}টি নথি লাগবে`
-            : 'AI reads your documents automatically · AI স্বয়ংক্রিয়ভাবে পড়বে'}
+            ? `${documents.length}টি নথি প্রয়োজন · ${documents.length} document${documents.length > 1 ? 's' : ''} needed`
+            : 'AI স্বয়ংক্রিয়ভাবে তথ্য বের করবে · AI reads your documents automatically'}
         </p>
 
         {/* Progress bar */}
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex-1 h-2 bg-border rounded-full overflow-hidden">
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-1.5 bg-border rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700"
               style={{
@@ -249,7 +292,53 @@ export function Step2Documents() {
         </div>
       )}
 
+      {/* ── Voice Required Fields ────────────────────────────────────────── */}
+      {(() => {
+        const voiceFields = extractedFields.filter((f) =>
+          isVoiceRequiredField(f.id, f.fieldName)
+        )
+        if (voiceFields.length === 0) return null
+        return (
+          <div
+            className="mb-5 rounded-2xl border p-4 animate-fade-in"
+            style={{ background: 'linear-gradient(135deg, #FF8C0010, #FF6B0008)', borderColor: '#FF8C0025' }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                   style={{ background: 'linear-gradient(135deg, #E0700A, #FF8C00)' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: '#B45309' }}>
+                  পরের ধাপে জিজ্ঞাসা করা হবে
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  এই তথ্যগুলো কোনো নথিতে থাকে না — আপনি নিজে বলবেন
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {voiceFields.map((f) => (
+                <span
+                  key={f.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border"
+                  style={{ background: '#FF8C0010', borderColor: '#FF8C0025', color: '#B45309' }}
+                >
+                  {f.bengaliName || f.fieldName}
+                </span>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
+
       <StepNavigator nextDisabled={uploadedCount === 0} />
+
 
       <VoiceGuideBar
         text={guide.currentText}

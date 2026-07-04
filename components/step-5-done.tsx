@@ -29,34 +29,53 @@ export function Step5Done() {
   const [speakingId, setSpeakingId] = useState<string | null>(null)
   const guide = useVoiceGuide()
 
-  // Build real extracted data directly from context — no demo values
-  const allDocFields = documents.flatMap((doc) =>
-    doc.extractedData
-      .filter((f) => f.value && f.value.trim() !== '')
-      .map((f) => ({
-        id: `${doc.documentType}_${f.id}`,
+  // ── Build value lookup from all sources ─────────────────────────────────
+  // Values come from: documents.extractedData → finalFieldMap (overrides)
+  const valueById: Record<string, string> = {}
+  const valueByName: Record<string, string> = {}
+  const sourceById: Record<string, 'document' | 'voice'> = {}
+
+  documents.forEach((doc) => {
+    doc.extractedData.forEach((f) => {
+      if (f.value?.trim()) {
+        valueById[f.id] = f.value
+        valueByName[f.fieldName.toLowerCase()] = f.value
+        sourceById[f.id] = 'document'
+        sourceById[f.fieldName.toLowerCase()] = 'document'
+      }
+    })
+  })
+
+  Object.values(finalFieldMap).forEach((f) => {
+    if (f.value?.trim()) {
+      valueById[f.id] = f.value
+      valueByName[f.fieldName.toLowerCase()] = f.value
+      sourceById[f.id] = f.source
+      sourceById[f.fieldName.toLowerCase()] = f.source
+    }
+  })
+
+  // ── allFields = ONLY the form's actual blank fields (from Step 1 analysis) ──
+  // This prevents document-internal fields (MICR, PAN no, IFSC) from appearing
+  // in the walkthrough as fields to physically write on the form.
+  const allFields = extractedFields
+    .map((f) => {
+      const value =
+        valueById[f.id] ??
+        valueByName[f.fieldName.toLowerCase()] ??
+        f.currentValue ?? ''
+      const src: 'document' | 'voice' =
+        sourceById[f.id] ?? sourceById[f.fieldName.toLowerCase()] ?? 'voice'
+      return {
+        id: f.id,
         fieldName: f.fieldName,
         bengaliName: f.bengaliName || f.fieldName,
-        value: f.value,
-        source: 'document' as const,
-      }))
-  )
+        value,
+        source: src,
+      }
+    })
+    .filter((f) => f.value && f.value.trim() !== '')
 
-  const voiceFields = Object.values(finalFieldMap)
-    .filter((f) => f.source === 'voice' && f.value?.trim())
-
-  const voicePanelFields = extractedFields
-    .filter((f) => f.currentValue && f.currentValue.trim() !== '')
-    .filter((f) => !allDocFields.find((d) => d.fieldName === f.fieldName))
-    .map((f) => ({
-      id: f.id,
-      fieldName: f.fieldName,
-      bengaliName: f.bengaliName || f.fieldName,
-      value: f.currentValue!,
-      source: 'voice' as const,
-    }))
-
-  const allFields = [...allDocFields, ...voiceFields, ...voicePanelFields]
   const totalFields = allFields.length
   const formImage = formImages[0]?.thumbnail || null
 
@@ -71,13 +90,30 @@ export function Step5Done() {
   const generateWalkthrough = async () => {
     setIsGenerating(true)
     try {
+      // Build a fieldName → yPercent lookup from Step 1 extracted fields
+      // (extractedFields have the AI-estimated vertical positions on the form image)
+      const yPercentByName: Record<string, number> = {}
+      const yPercentById: Record<string, number> = {}
+      extractedFields.forEach((f) => {
+        if (typeof f.yPercent === 'number') {
+          yPercentByName[f.fieldName.toLowerCase()] = f.yPercent
+          yPercentById[f.id] = f.yPercent
+        }
+      })
+
       const fieldMapForApi: Record<string, any> = {}
       allFields.forEach((f) => {
+        // Try to find matching yPercent by field name or ID
+        const yPercent =
+          yPercentById[f.id] ??
+          yPercentByName[f.fieldName.toLowerCase()] ??
+          undefined
         fieldMapForApi[f.id] = {
           value: f.value,
           fieldName: f.fieldName,
           bengaliName: f.bengaliName,
           source: f.source,
+          ...(yPercent !== undefined ? { yPercent } : {}),
         }
       })
       const res = await fetch('/api/generate-output', {

@@ -15,6 +15,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 
 const FORM_INFO: Record<string, { en: string; bn: string; hi: string }> = {
+  auto:             { en: 'Any Form',        bn: 'যেকোনো ফর্ম',        hi: 'कोई भी फॉर्म'     },
   annapurna:        { en: 'Annapurna Bhandar', bn: 'অন্নপূর্ণা ভাণ্ডার', hi: 'अन्नपूर्णा भंडार' },
   ayushman:         { en: 'Ayushman Bharat',   bn: 'আয়ুষ্মান ভারত',     hi: 'आयुष्मान भारत'   },
   ration:           { en: 'Ration Card',        bn: 'রেশন কার্ড',         hi: 'राशन कार्ड'       },
@@ -33,18 +34,29 @@ const STEPS = [
 
 export default function FormPage() {
   const params = useParams()
-  const formId = params?.formId as string
-  const { currentStep, resetForm } = useFormContext()
+  const paramFormId = params?.formId as string | undefined
+  const { currentStep, resetForm, setFormId, formId: contextFormId } = useFormContext()
   const { language, setLanguage, languageNames } = useLanguage()
   const router = useRouter()
   const [showLangMenu, setShowLangMenu] = useState(false)
 
-  useEffect(() => {
-    resetForm()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formId])
+  // Use URL param when available; fall back to what the dashboard already put in context
+  const formId = paramFormId || contextFormId || 'auto'
 
-  const form = FORM_INFO[formId] || { en: 'Application Form', bn: 'আবেদন ফর্ম', hi: 'आवेदन फॉर्म' }
+  useEffect(() => {
+    if (paramFormId) {
+      // Dynamic route — reset for a fresh form session
+      resetForm()
+      setFormId(paramFormId)
+    } else if (!contextFormId) {
+      // Static /forms/auto without prior context — default to auto
+      setFormId('auto')
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramFormId])
+
+  // Show AI-detected title (from formTitle context) when available, else preset name
+  const form = FORM_INFO[formId] || { en: 'Any Form', bn: 'যেকোনো ফর্ম', hi: 'कोई भी फॉर्म' }
   const getFormName = () => language === 'bn' ? form.bn : language === 'hi' ? form.hi : form.en
 
   return (
