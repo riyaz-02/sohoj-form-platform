@@ -1,5 +1,5 @@
 {
   "buildCommand": "pnpm build",
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "installCommand": "pnpm install --no-frozen-lockfile --ignore-scripts && pnpm rebuild sharp protobufjs @firebase/util msw",
   "framework": "nextjs"
 }
